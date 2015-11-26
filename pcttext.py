@@ -25,6 +25,10 @@ def get_newline_in_data(data):
         newline = lf
     return newline
 
+def re_escape_visible(val):
+    result = val.replace("\n","\\n").replace("\n","\\n")
+    return result
+
 def get_newline(file_path):
     data = None
     with open (file_path, "r") as myfile:
