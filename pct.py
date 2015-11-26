@@ -394,6 +394,20 @@ class PCTParser:
             method_name = None
             is_method_bad = False
             method_indent = None
+            if parser_op == self.parser_op_preprocess:
+                is_sys_imported = False
+                while line_index < len(self.lines):
+                    line = self.lines[line_index]
+                    line_strip = line.strip()
+                    import_sys_call = "import sys"
+                    if line_strip[0:len(import_sys_call)] == import_sys_call:
+                        is_sys_imported = True
+                        break
+                    line_index += 1
+                line_index = 0
+                if not is_sys_imported:
+                    self.lines = ["import sys"] + self.lines
+            
             while line_index < len(self.lines):
                 #self.print_status(""+participle+" line "+str(line_counting_number)+"...")
                 line_original = self.lines[line_index]
@@ -695,7 +709,7 @@ class PCTParser:
                                     if fw_line != line:
                                         self.print_notice("line "+str(line_counting_number)+": (changing) using python print instead of Console.Error.WriteLine")
                                     fw_line = line
-                                    line = line.replace("Console.Error.Write","print")
+                                    line = line.replace("Console.Error.Write","sys.stdout.write")
                                     if fw_line != line:
                                         self.print_notice("line "+str(line_counting_number)+": (changing) using python print instead of Console.Error.Write")
                                     fw_line = line
