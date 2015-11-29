@@ -5,6 +5,67 @@ lowercase_chars = uppercase_chars.lower()
 letter_chars = uppercase_chars+lowercase_chars
 digit_chars = "0123456789"
 identifier_chars = letter_chars+"_"+digit_chars
+identifier_and_dot_chars = identifier_chars + "."
+
+def lastchar(val):
+    result = None
+    if (val is not None) and (len(val) > 0):
+        result = val[len(val)-1]
+    return result
+    
+def get_indent_string(line):
+    ender_index = find_any_not(line," \t")
+    result = ""
+    if ender_index > -1:
+        result = line[:ender_index]
+    return result
+
+def get_operation_chunk_len(val, start=0, step=1, line_counting_number=None):
+    result = 0
+    openers = "([{"
+    closers = ")]}"
+    quotes = "'\""
+    ender = len(val)
+    direction_msg = "after opening"
+    if step < 0:
+        tmp = openers
+        openers = closers
+        closers = tmp
+        ender = -1
+        direction_msg = "before closing"
+    opens = ""
+    closes = ""
+    index = start
+    in_quote = None
+    line_message = ""
+    if (line_counting_number is not None) and (line_counting_number>-1):
+        line_message = "line "+str(line_counting_number)+": "
+    while (step > 0 and index < ender) or (step < 0 and index > ender):
+        opener_number = openers.find(val[index])
+        closer_number = closers.find(val[index])
+        expected_closer = None
+        if (len(closes)>0):
+            expected_closer = lastchar(closes)
+        quote_number = quotes.find(val[index])
+        if (in_quote == None) and (opener_number > -1):
+            opens += openers[opener_number]
+            closes += closers[opener_number]
+        elif (in_quote == None) and (closer_number > -1):
+            if closers[closer_number] == expected_closer:
+                opens = opens[:len(opens)-1]
+                closes = closes[:len(closes)-1]
+        elif quote_number > -1:
+            if in_quote is None:
+                in_quote = val[index]
+            else:
+                if in_quote == val[index]:
+                    if (index-1 == -1) or (val[index-1]!="\\"):
+                        in_quote = None
+        index += step
+        result += 1
+        if (in_quote is None) and (len(opens)==0) and ((index>=len(val)) or (val[index] not in identifier_and_dot_chars)):
+            break
+    return result
 
 def get_newline_in_data(data):
     newline = None
@@ -46,13 +107,16 @@ def is_allowed_in_variable_name_char(one_char):
         print("error in is_allowed_in_variable_name_char: one_char must be 1 character")
     return result
 
-def find_any_not(haystack, char_needles, step = 1):
+def find_any_not(haystack, char_needles, start=None, step = 1):
     result = -1
     if (len(char_needles)>0) and (len(haystack)>0):
         endbefore = len(haystack)
-        start = 0
+        if start is None:
+            if step > 0:
+                start = 0
+            elif step < 0:
+                start = len(haystack)-1
         if step < 0:
-            start = len(haystack)-1
             endbefore = -1
         index = start
         

@@ -137,7 +137,6 @@ class PCTParser:
     
     def print_notice(self, msg):
         if self.show_notices:
-            
             print("  (CHANGE) "+msg)
     
     def print_status(self, msg):
@@ -399,14 +398,24 @@ class PCTParser:
                 while line_index < len(self.lines):
                     line = self.lines[line_index]
                     line_strip = line.strip()
+                    line_comment_index = find_unquoted_MAY_BE_COMMENTED(line, "#")
+                    line_nocomment = line
+                    if line_comment_index > -1:
+                        line_nocomment = line[:line_comment_index]
+                    line_nocomment_strip = line_nocomment.strip()
                     import_sys_call = "import sys"
-                    if line_strip[0:len(import_sys_call)] == import_sys_call:
+                    #if line_strip[0:len(import_sys_call)] == import_sys_call:
+                    if line_nocomment_strip == import_sys_call:
                         is_sys_imported = True
                         break
                     line_index += 1
                 line_index = 0
                 if not is_sys_imported:
-                    self.lines = ["import sys"] + self.lines
+                    #put on SECOND line to avoid messing up the BOM:
+                    if (len(self.lines)>1):
+                        self.lines = [self.lines[0]] + ["import sys"] + self.lines[1:]
+                    else:
+                        self.lines = [self.lines[0]] + ["import sys"]
             
             while line_index < len(self.lines):
                 #self.print_status(""+participle+" line "+str(line_counting_number)+"...")
@@ -461,8 +470,30 @@ class PCTParser:
                             self.lines[line_index] = line
                             line_strip = line.strip()
                     if (not is_multiline_string) and (line_strip[:1] != "#"):
+                        if (line_strip == "except , :"):
+                            line = indent + "except:"
+                        if (find_unquoted_not_commented(line, "except ") > -1) or (find_unquoted_not_commented(line, "except:") > -1)  or (find_unquoted_not_commented(line, "finally:") > -1):
+                            next_line_indent = None
+                            except_string = "except"
+                            if (find_unquoted_not_commented(line, "finally:") > -1):
+                                except_string = "finally"
+                            next_line_number = self.find_line_nonblank_noncomment(line_index+1)
+                            if next_line_number > -1:
+                                next_line_indent = get_indent_string(self.lines[next_line_number])
+                            #self.print_notice("line "+str(line_counting_number)+": CHECKING FOR DANGLING EXCEPTION OPENER...")
+                            if (next_line_number < 0) or (len(next_line_indent) <= len(indent)):
+                                one_indent = "    "
+                                if line_index+1 < len(self.lines):
+                                    self.lines.insert(line_index+1, indent+one_indent+"pass")
+                                elif line_index+1 == len(self.lines):
+                                    self.lines.append(indent+one_indent+"pass")
+                                self.print_source_error("line "+str(line_counting_number)+": (WARNING: source error automatically corrected) expected indent after '"+except_string+"' so adding 'pass'")
+                        
                         if exn_indent is not None:
                             if (len(line.strip()) > 0) and (len(indent) <= len(exn_indent)):
+                                #the following two commented lines don't work for some reason (ignoring, using look-ahead instead)
+                                #if (line_index-exn_line_index<=1):
+                                #    lines.insert(line_index, exn_indent+"pass")
                                 exn_indent = None
                                 exn_object_name = None
                                 exn_line_index = None
@@ -481,6 +512,8 @@ class PCTParser:
                             exn_opener_noname_index = find_unquoted_not_commented(line, exn_opener_noname)
                             exn_opener = "except "
                             exn_opener_index = find_unquoted_not_commented(line, exn_opener)
+                            finally_opener = "finally:"
+                            finally_opener_index = find_unquoted_not_commented(line, exn_opener)
                             if (exn_opener_index > -1) and (exn_opener_index == indent_count):
                                 exn_line_index = line_index
                                 exn_ender_index = find_unquoted_not_commented(line, ":", start=exn_opener_index+len(exn_opener))
@@ -536,6 +569,7 @@ class PCTParser:
                                             #even if type_string is None (undeterminate) add it
                                             symbol = PCTSymbol(assignment_left,line_counting_number,type_identifier=type_string)
                                             symbol.class_name = class_name
+                                            symbol.default_value = assignment_right
                                             self.symbols.append(symbol)
                                     else:
                                         
@@ -566,7 +600,7 @@ class PCTParser:
                                             is_method_bad = True
                                             line = "#" + line
                                             self.lines[line_index] = line
-                                            self.print_source_error("line "+str(line_counting_number)+": source WARNING: (automatically corrected) duplicate method starting on line--commenting since redundant (you may need to fix this by hand if this overload has code you needed).")
+                                            self.print_source_error("line "+str(line_counting_number)+": source WARNING: (automatically corrected) duplicate '"+method_name+"' method starting on line--commenting since redundant (you may need to fix this by hand if this overload has code you needed).")
                                     else:
                                         method_fqname = method_name
                                         if (class_name is not None):
@@ -662,9 +696,70 @@ class PCTParser:
                                     line = "#"+line
                                     self.print_notice("line "+str(line_counting_number)+": commenting useless line since imports framework")
                                 else:
+                                    start_index = 0
+                                    while True:
+                                        cts = "Convert.ToString"
+                                        #print("  line "+str(line_counting_number)+","+str(start_index)+": looking for "+cts)
+                                        cts_new = "str"
+                                        cts_index = find_unquoted_not_commented(line, cts, start=start_index)
+                                        if cts_index > -1:
+                                            if (cts_index == 0) or (line[cts_index-1] not in identifier_chars):
+                                                cts_ender_index = cts_index + len(cts)
+                                                if (len(line)==cts_ender_index) or (line[cts_ender_index] not in identifier_chars):
+                                                    line = line[:cts_index] + cts_new + line[cts_index+len(cts_new)]
+                                                    start_index = cts_index + len(cts_new)
+                                            else:
+                                                start_index = cts_index + len(cts)
+                                        else:
+                                            break
+                                    start_index = 0
+                                    while True:
+                                        fwts = "ToString"
+                                        fwts_index = find_unquoted_not_commented(line, fwts, start=start_index)
+                                        if fwts_index > -1:
+                                            #print("  line "+str(line_counting_number)+","+str(start_index)+": processing "+fwts+" at column "+str(fwts_index+1))  # +" in '"+line+"'")
+                                            dot_index = fwts_index - 1
+                                            if (dot_index == 0) or (line[dot_index:dot_index+1] == "."):
+                                                fwts_ender_index = fwts_index + len(fwts)
+                                                if (len(line) == fwts_ender_index) or (line[fwts_ender_index] not in identifier_chars):
+                                                    operand_lastchar_index = find_any_not(line, " \t", start=dot_index-1, step=-1)
+                                                    if operand_lastchar_index > -1:
+                                                        operand_ender_index = operand_lastchar_index + 1
+                                                        operand_len = get_operation_chunk_len(line, start=operand_lastchar_index, step=-1)
+                                                        operand_index = operand_ender_index-operand_len
+                                                        operand = line[operand_index:operand_ender_index]
+                                                        open_paren_index = find_unquoted_not_commented(line,"(",start=fwts_index+len(fwts))
+                                                        if open_paren_index>-1:
+                                                            fwts_params_len = get_operation_chunk_len(line, start=open_paren_index)
+                                                            if (fwts_params_len>0):
+                                                                fwts_params = line[open_paren_index:open_paren_index+fwts_params_len]
+                                                                fw_line = line
+                                                                line = line[:operand_index]+"str("+operand+")"+line[open_paren_index+fwts_params_len:]
+                                                                if fwts_params!="()":
+                                                                    self.print_notice("")
+                                                                    self.print_notice("line "+str(line_counting_number)+": (parser WARNING) changing conversion to str("+operand+") but pushing off '.ToString' params ('"+fwts_params+"'; length "+str(fwts_params_len)+") to comment.")
+                                                                    line += "  # "+fwts_params
+                                                                elif fw_line != line:
+                                                                    self.print_notice("line "+str(line_counting_number)+": (changing) using 'str' function instead of '.ToString'")
+                                                            else:
+                                                                self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected close parenthesis after ToString( at ["+str(fwts_index)+"]")
+                                                                start_index = ftws_index + len(fwts)
+                                                        else:
+                                                            self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected open parenthesis after ToString( at ["+str(fwts_index)+"]")
+                                                            start_index = ftws_index + len(fwts)
+                                                    else:
+                                                        start_index = fwts_index + len(fwts)
+                                                else:
+                                                    start_index = fwts_index + len(fwts)
+                                            else:
+                                                start_index = fwts_index + len(fwts)
+                                        else:
+                                            break
+                                    start_index = 0
                                     while True:
                                         fwss = "Substring"
-                                        fwss_index = find_unquoted_not_commented(line, fwss)
+                                        #print("  line "+str(line_counting_number)+","+str(start_index)+": looking for "+fwss)
+                                        fwss_index = find_unquoted_not_commented(line, fwss, start_index)
                                         if fwss_index >= 0:
                                             dot_index = fwss_index - 1
                                             if line[dot_index:dot_index+1] == ".":
@@ -704,14 +799,36 @@ class PCTParser:
                                         else:
                                             break
                                     #end while has Substring subscripts
+                                    
+                                    #TODO: should use print(x, file=sys.stderr):
                                     fw_line = line
-                                    line = line.replace("Console.Error.WriteLine","print")
+                                    line = line.replace("Console.Error.WriteLine","sys.stderr.write")
                                     if fw_line != line:
-                                        self.print_notice("line "+str(line_counting_number)+": (changing) using python print instead of Console.Error.WriteLine")
+                                        self.print_notice("line "+str(line_counting_number)+": (changing) using python sys.stderr.write, write \\n, flush instead of Console.Error.WriteLine")
+                                        self.lines = self.lines[:line_index+1] + [indent+"sys.stderr.write(\"\\n\")",indent+"sys.stderr.flush()"] + self.lines[line_index+1:]
+                                        
+                                    #TODO: should sys.stderr.write(str(x)):
                                     fw_line = line
-                                    line = line.replace("Console.Error.Write","sys.stdout.write")
+                                    line = line.replace("Console.Error.Write","sys.stderr.write")
                                     if fw_line != line:
-                                        self.print_notice("line "+str(line_counting_number)+": (changing) using python print instead of Console.Error.Write")
+                                        self.print_notice("line "+str(line_counting_number)+": (changing) using python sys.stderr.write instead of Console.Error.Write")
+                                    fw_line = line
+                                    line = line.replace("Console.Error.Flush","sys.stderr.flush")
+                                    if fw_line != line:
+                                        self.print_notice("line "+str(line_counting_number)+": (changing) using python sys.stderr.flush instead of Console.Error.Flush")
+                                    fw_line = line
+                                    line = line.replace("Console.WriteLine","print")
+                                    if fw_line != line:
+                                        self.print_notice("line "+str(line_counting_number)+": (changing) using python print instead of Console.WriteLine")
+                                    #TODO: should sys.stdout.write(str(x)):
+                                    fw_line = line
+                                    line = line.replace("Console.Write","sys.stdout.write")
+                                    if fw_line != line:
+                                        self.print_notice("line "+str(line_counting_number)+": (changing) using python sys.stdout.write instead of Console.Write")
+                                    fw_line = line
+                                    line = line.replace("Console.Out.Flush","sys.stdout.flush")
+                                    if fw_line != line:
+                                        self.print_notice("line "+str(line_counting_number)+": (changing) using python sys.stdout.flush instead of Console.Out.Flush")
                                     fw_line = line
                                     line = line.replace(" == None"," is None")
                                     if fw_line != line:
@@ -933,42 +1050,47 @@ class PCTParser:
         result = None
         operation_right_side_string = operation_right_side_string.strip()
         sign = None
-        number_string = operation_right_side_string
-        if operation_right_side_string[0:1] == "-":
-            number_string = operation_right_side_string[1:]
-            sign = "-"
-        other_index = find_any_not(number_string, digit_chars)
-        delimiter = None
-        whole_number_string = number_string
-        decimal_string = None
-        if other_index >= 0:
-            other = number_string[other_index:other_index+1]
-            if other == ".":
-                whole_number_string = number_string[0:other_index]
-                decimal_string = number_string[other_index+1:]
-                junk_index = find_any_not(decimal_string, digit_chars)
-                if junk_index < 0:
-                    result = "decimal"
-                #TODO: make this recursive here (process operator at junk_index and all others)
+        staticmethod_opener = "staticmethod("
+        if operation_right_side_string[:len(staticmethod_opener)] == staticmethod_opener:
+            result = "staticmethod"
+        
+        if result is None:
+            number_string = operation_right_side_string
+            if operation_right_side_string[0:1] == "-":
+                number_string = operation_right_side_string[1:]
+                sign = "-"
+            other_index = find_any_not(number_string, digit_chars)
+            delimiter = None
+            whole_number_string = number_string
+            decimal_string = None
+            if other_index >= 0:
+                other = number_string[other_index:other_index+1]
+                if other == ".":
+                    whole_number_string = number_string[0:other_index]
+                    decimal_string = number_string[other_index+1:]
+                    junk_index = find_any_not(decimal_string, digit_chars)
+                    if junk_index < 0:
+                        result = "decimal"
+                    #TODO: make this recursive here (process operator at junk_index and all others)
+                else:
+                    
+                    line_display_string = "near '"+operation_right_side_string+"'"
+                    if line_counting_number > 0:
+                        line_display_string = "on line "+str(line_counting_number)
+                    if sign == "-":
+                        self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected only numbers or '.' after '"+sign+"'")
+                    #elif other_index > 0:
+                    #    #this error should only displayed if recursion was done (such as to process operators):
+                    #    self.print_source_error("  source error "+str(line_counting_number)+": expected only numbers or '.' after numeric literal")
+                    #else not enough information
+                if (result is None) and (sign is None):
+                    string_type_prefixes = ["\"","u'","u\"","b'","b\""]
+                    for string_type_prefix in string_type_prefixes:
+                        if operation_right_side_string[0:len(string_type_prefix)] == string_type_prefix:
+                            result = "string"
+                            break
             else:
-                
-                line_display_string = "near '"+operation_right_side_string+"'"
-                if line_counting_number > 0:
-                    line_display_string = "on line "+str(line_counting_number)
-                if sign == "-":
-                    self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected only numbers or '.' after '"+sign+"'")
-                #elif other_index > 0:
-                #    #this error should only displayed if recursion was done (such as to process operators):
-                #    self.print_source_error("  source error "+str(line_counting_number)+": expected only numbers or '.' after numeric literal")
-                #else not enough information
-            if (result is None) and (sign is None):
-                string_type_prefixes = ["\"","u'","u\"","b'","b\""]
-                for string_type_prefix in string_type_prefixes:
-                    if operation_right_side_string[0:len(string_type_prefix)] == string_type_prefix:
-                        result = "string"
-                        break
-        else:
-            result = "int"
+                result = "int"
                 
         if result is None:
             these_types = self.custom_types + self.builtin_types
@@ -1014,7 +1136,27 @@ class PCTParser:
                 result = index
                 break
         return result
-    
+        
+    def find_line_nonblank_noncomment(self, start_line_number=0):
+        result = -1
+        #is_multiline_string = False
+        line_index = start_line_number
+        #ml_delimiter = "\"\"\""
+        while line_index < len(self.lines):
+            line_original = self.lines[line_index]
+            line = line_original
+            line_strip = line.strip()
+            line_comment_index = find_unquoted_MAY_BE_COMMENTED(line, "#")
+            line_nocomment = line
+            if line_comment_index > -1:
+                line_nocomment = line[:line_comment_index]
+            line_nocomment_strip = line_nocomment.strip()
+            if len(line_nocomment_strip) > 0:
+                result = line_index
+                break
+            line_index += 1
+        return result
+        
     #def get_parsed_symbol_by_id(sid):
         #result = None
         #return result
