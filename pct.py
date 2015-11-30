@@ -3,7 +3,8 @@
 # (or identical output from SharpDevelop 3.0 (Project, Tools, C# to Python))
 # License: GPL
 import os
-import datetime
+#import datetime
+import time
 from pcttext import *
 #import re  # re.escape -- why doesn't it work (printing result shows backslash then actually ends the line)
 
@@ -93,7 +94,6 @@ class PCTSymbol:
             result = self.class_name + "." + result
         return result
 
-
 class PCTParser:
     
     custom_types = None
@@ -101,7 +101,7 @@ class PCTParser:
     symbols = None  # including variables
     functions = None
     command_keywords = None
-    data = None
+    #data = None
     
     lines = None
     operator_sets = None  #in order of operation
@@ -124,7 +124,7 @@ class PCTParser:
     newline = None
     show_notices = None
     sw_object_strings = None
-    
+    extra_lines_cumulative = None
     parser_op_preprocess = "preprocess"
     parser_op_remove_net_framework = "remove_net_framework"
     
@@ -173,8 +173,9 @@ class PCTParser:
         self.outfile_path = outfile_path
         outfile = open(self.outfile_path, 'w')
         if self.newline is None:
-            self.newline = os.sep
-            self.print_parsing_error("WARNING: no file loaded, so newline '"+re_escape_visible(self.newline)+"' will be used for creating '"+outfile_path+"'.")
+            self.newline = "\n"  # NOTE: python automatically changes instances of \n to os.sep, so would change os.sep to \r\r\n so don't use os.sep
+            #self.newline = os.sep
+            #self.print_parsing_error("WARNING: no file loaded, so newline '"+re_escape_visible(self.newline)+"' will be used for creating '"+outfile_path+"'.")
         indent = ""
         if self.file_path is not None:
             outfile.write(self.file_path+self.newline)
@@ -210,9 +211,10 @@ class PCTParser:
     
     def __init__(self, file_path):
         self.file_path = file_path
-        self.data = None
+        #self.data = None
         self.show_notices = True
         self.sw_object_strings = list()
+        self.extra_lines_cumulative = 0
         builtin_type_strings = list()
         builtin_type_strings.append("int")
         builtin_type_strings.append("long")
@@ -324,7 +326,7 @@ class PCTParser:
         
     def load_file(self, infile_path):
         self.lines = list()
-        self.data = None
+        #self.data = None
         self.file_path = infile_path
         #pre-process file (get symbol names)
         infile = open(infile_path, 'r')
@@ -338,19 +340,20 @@ class PCTParser:
                 break
         infile.close()
         self.print_status( str(len(self.lines)) + " line(s) detected")
-        with open (infile_path, "r") as myfile:
-            self.data=myfile.read()
-        self.newline = None
-        if self.data is not None:
-            self.newline = get_newline_in_data(self.data)
-        if self.newline is None:
-            reason = ""
-            if self.data is None:
-                reason = "since data was not loaded"
-            self.print_parsing_error("WARNING: could not detect newline in '"+self.file_path+"' "+reason+" so using '"+re.escape(os.sep)+"'")
-            self.newline = os.sep
-        else:
-            self.print_status("Using '"+re_escape_visible(self.newline)+"' for newline (detected in '"+self.file_path+"').")
+        #with open (infile_path, "r") as myfile:
+            #self.data=myfile.read()
+        self.newline = "\n"  # NOTE: python automatically changes instances of \n to os.sep, so would change os.sep to \r\r\n so don't use os.sep
+        #self.newline = None
+        #if self.data is not None:
+            #self.newline = get_newline_in_data(self.data)
+        #if self.newline is None:
+        #    reason = ""
+        #    if self.data is None:
+        #        reason = "since data was not loaded"
+        #    self.print_parsing_error("WARNING: could not detect newline in '"+self.file_path+"' "+reason+" so using '"+re.escape(os.sep)+"'")
+        #    self.newline = os.sep
+        #else:
+        #    self.print_status("Using '"+re_escape_visible(self.newline)+"' for newline (detected in '"+self.file_path+"').")
     #end load_file
     
     #formerly preprocess_python_framework_lines(self, infile_path)
@@ -396,10 +399,14 @@ class PCTParser:
             is_method_bad = False
             method_indent = None
             extra_lines = 0
-            extra_lines_cumulative = 0
+            
             extra_lines_passed = 0
             if parser_op == self.parser_op_preprocess:
+                self.extra_lines_cumulative = 0
                 is_sys_imported = False
+                is_convert_note_prepended = False
+                convert_note = "# Processed by PythonCodeTranslators https://github.com/expertmm/PythonCodeTranslators"
+                convert_note_dated = convert_note + time.strftime("%Y-%m-%d %H:%M:%S")
                 while line_index < len(self.lines):
                     line = self.lines[line_index]
                     line_strip = line.strip()
@@ -413,6 +420,9 @@ class PCTParser:
                     if line_nocomment_strip == import_sys_call:
                         is_sys_imported = True
                         break
+                    convert_note_index = line.find(convert_note)
+                    if convert_note_index > -1:
+                        is_convert_note_prepended = True
                     line_index += 1
                 line_index = 0
                 if not is_sys_imported:
@@ -422,6 +432,14 @@ class PCTParser:
                         extra_lines += 1
                     else:
                         self.lines = [self.lines[0]] + ["import sys"]
+                        extra_lines += 1
+                if not is_convert_note_prepended:
+                    #put on SECOND line to avoid messing up the BOM:
+                    if (len(self.lines)>1):
+                        self.lines = [self.lines[0]] + [convert_note_dated] + self.lines[1:]
+                        extra_lines += 1
+                    else:
+                        self.lines = [self.lines[0]] + [convert_note_dated]
                         extra_lines += 1
             sr_object = None
             sr_linevar_tmp = None
@@ -612,27 +630,27 @@ class PCTParser:
                                 #class_name_thendot = ""
                                 #if class_name is not None:
                                 #    class_name_thendot = class_name + "."
-                                local_aop_index = find_unquoted_not_commented(line, "=")
-                                if local_aop_index > -1:
-                                    identifier_last_index = find_any_not(line, " \t", start=local_aop_index-1, step=-1)
-                                    print("    local_aop_index-1:"+str(local_aop_index-1))
-                                    print("    identifier_last_index:"+str(identifier_last_index))
+                                local_assn_op_index = find_unquoted_not_commented(line, "=")
+                                if local_assn_op_index > -1:
+                                    identifier_last_index = find_any_not(line, " \t", start=local_assn_op_index-1, step=-1)
+                                    #print("    local_assn_op_index-1:"+str(local_assn_op_index-1))
+                                    #print("    identifier_last_index:"+str(identifier_last_index))
                                     if (identifier_last_index > -1) and (line[identifier_last_index] in identifier_chars):
                                         identifier_ender_index = identifier_last_index + 1
-                                        local_aop_left = line[:identifier_ender_index].strip()
-                                        if (is_identifier_valid(local_aop_left, True)):
-                                            local_aop_right = line[local_aop_index+1:].strip()
+                                        local_assn_op_left = line[:identifier_ender_index].strip()
+                                        if (is_identifier_valid(local_assn_op_left, True)):
+                                            local_assn_op_right = line[local_assn_op_index+1:].strip()
                                             try_constructor = "StreamWriter"
                                             try_constructor_opener = try_constructor + "("
-                                            if local_aop_right[:len(try_constructor_opener)] == try_constructor_opener:
-                                                #this_symbol = PCTSymbol(local_aop_left, line_counting_number, type_identifier=try_constructor)
+                                            if local_assn_op_right[:len(try_constructor_opener)] == try_constructor_opener:
+                                                #this_symbol = PCTSymbol(local_assn_op_left, line_counting_number, type_identifier=try_constructor)
                                                 #this_symbol.method_name = method_name
                                                 #this_symbol.class_name = class_name
                                                 if try_constructor == "StreamWriter":
-                                                    self.sw_object_strings.append(local_aop_left)
-                                                    #input("line "+str(line_counting_number)+": got NEW "+try_constructor+" '"+local_aop_left+"'--press enter")
+                                                    self.sw_object_strings.append(local_assn_op_left)
+                                                    #input("line "+str(line_counting_number)+": got NEW "+try_constructor+" '"+local_assn_op_left+"'--press enter")
                                             #else:
-                                                #input("line "+str(line_counting_number)+": got new "+local_aop_right[:len(try_constructor_opener)]+" '"+local_aop_left+"'--press enter")
+                                                #input("line "+str(line_counting_number)+": got new "+local_assn_op_right[:len(try_constructor_opener)]+" '"+local_assn_op_left+"'--press enter")
                                     #else:
                                         #self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected variable before '='")
                                         #input("press enter...")
@@ -785,7 +803,12 @@ class PCTParser:
                                             sw_writeline_oparen_index = sw_writeline_index+len(sw_writeline)-1
                                             sw_writeline_parenthetical_len = get_operation_chunk_len(line, start=sw_writeline_oparen_index, line_counting_number=line_counting_number)
                                             if (sw_writeline_parenthetical_len > 0) and (line[sw_writeline_oparen_index+sw_writeline_parenthetical_len-1]==")"):
-                                                line = line[:sw_writeline_index+len(theoretical_sw_object)] + ".write(" + line[sw_writeline_index+len(sw_writeline):sw_writeline_oparen_index+sw_writeline_parenthetical_len-1] + "+\"\\n\"" + line[sw_writeline_oparen_index+sw_writeline_parenthetical_len-1:]
+                                                sw_params_index = sw_writeline_index+len(sw_writeline)
+                                                sw_params_ender_index = sw_writeline_oparen_index+sw_writeline_parenthetical_len-1
+                                                sw_newline_string = "+\"\\n\""
+                                                if (sw_params_ender_index-sw_params_index) < 1:
+                                                    sw_newline_string = "\"\\n\""
+                                                line = line[:sw_writeline_index+len(theoretical_sw_object)] + ".write(" + line[sw_params_index:sw_params_ender_index] + sw_newline_string + line[sw_writeline_oparen_index+sw_writeline_parenthetical_len-1:]
                                             else:
                                                 self.print_source_error("line "+str(line_counting_number)+": (source error "+participle+") expected params after WriteLine")
                                     if sw_object is not None:
@@ -993,6 +1016,14 @@ class PCTParser:
                                         else:
                                             break
                                     #end while has Substring subscripts
+
+                                    #TODO: should use print("", file=sys.stderr):
+                                    fw_line = line
+                                    line = line.replace("Console.Error.WriteLine()","sys.stderr.write(\"\\n\")")
+                                    if fw_line != line:
+                                        self.print_notice("line "+str(line_counting_number)+": (changing) using python sys.stderr.write \\n, flush instead of Console.Error.WriteLine()")
+                                        self.lines = self.lines[:line_index+1] + [indent+"sys.stderr.flush()"] + self.lines[line_index+1:]
+                                        extra_lines += 1
                                     
                                     #TODO: should use print(x, file=sys.stderr):
                                     fw_line = line
@@ -1012,6 +1043,9 @@ class PCTParser:
                                     if fw_line != line:
                                         self.print_notice("line "+str(line_counting_number)+": (changing) using python sys.stderr.flush instead of Console.Error.Flush")
                                     fw_line = line
+                                    line = line.replace("Console.WriteLine()","print(\"\")")
+                                    if fw_line != line:
+                                        self.print_notice("line "+str(line_counting_number)+": (changing) using python print instead of Console.WriteLine")
                                     line = line.replace("Console.WriteLine","print")
                                     if fw_line != line:
                                         self.print_notice("line "+str(line_counting_number)+": (changing) using python print instead of Console.WriteLine")
@@ -1153,9 +1187,9 @@ class PCTParser:
                 if outfile is not None:
                     outfile.write(line+self.newline)
                 line_index += 1
-                line_counting_number = line_index + 1 - extra_lines_cumulative
+                line_counting_number = line_index + 1 - self.extra_lines_cumulative
                 if extra_lines > 0:
-                    extra_lines_cumulative += 1
+                    self.extra_lines_cumulative += 1
                     extra_lines_passed += 1
                 if extra_lines_passed >= extra_lines:
                     extra_lines = 0

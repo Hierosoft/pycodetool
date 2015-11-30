@@ -32,7 +32,7 @@ def is_identifier_valid(val, is_dot_allowed):
             result = False
             break
     return result
-    
+
 
 #formerly get_params_len
 def get_operation_chunk_len(val, start=0, step=1, line_counting_number=None):
