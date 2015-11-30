@@ -123,6 +123,7 @@ class PCTParser:
     outfile_path = None
     newline = None
     show_notices = None
+    sw_object_strings = None
     
     parser_op_preprocess = "preprocess"
     parser_op_remove_net_framework = "remove_net_framework"
@@ -158,7 +159,7 @@ class PCTParser:
                 result = index
                 break
         return result
-
+        
     #def get_function_number_by_fqname(self, fqname):
         #result = -1
         #for index in range(0, len(self.functions)):
@@ -210,7 +211,8 @@ class PCTParser:
     def __init__(self, file_path):
         self.file_path = file_path
         self.data = None
-        self.show_notices = False
+        self.show_notices = True
+        self.sw_object_strings = list()
         builtin_type_strings = list()
         builtin_type_strings.append("int")
         builtin_type_strings.append("long")
@@ -393,6 +395,9 @@ class PCTParser:
             method_name = None
             is_method_bad = False
             method_indent = None
+            extra_lines = 0
+            extra_lines_cumulative = 0
+            extra_lines_passed = 0
             if parser_op == self.parser_op_preprocess:
                 is_sys_imported = False
                 while line_index < len(self.lines):
@@ -414,9 +419,15 @@ class PCTParser:
                     #put on SECOND line to avoid messing up the BOM:
                     if (len(self.lines)>1):
                         self.lines = [self.lines[0]] + ["import sys"] + self.lines[1:]
+                        extra_lines += 1
                     else:
                         self.lines = [self.lines[0]] + ["import sys"]
-            
+                        extra_lines += 1
+            sr_object = None
+            sr_linevar_tmp = None
+            sr_linevar = None
+            sw_object = None
+            one_indent = "    "
             while line_index < len(self.lines):
                 #self.print_status(""+participle+" line "+str(line_counting_number)+"...")
                 line_original = self.lines[line_index]
@@ -470,79 +481,7 @@ class PCTParser:
                             self.lines[line_index] = line
                             line_strip = line.strip()
                     if (not is_multiline_string) and (line_strip[:1] != "#"):
-                        if (line_strip == "except , :"):
-                            line = indent + "except:"
-                        if (find_unquoted_not_commented(line, "except ") > -1) or (find_unquoted_not_commented(line, "except:") > -1)  or (find_unquoted_not_commented(line, "finally:") > -1):
-                            next_line_indent = None
-                            except_string = "except"
-                            if (find_unquoted_not_commented(line, "finally:") > -1):
-                                except_string = "finally"
-                            next_line_number = self.find_line_nonblank_noncomment(line_index+1)
-                            if next_line_number > -1:
-                                next_line_indent = get_indent_string(self.lines[next_line_number])
-                            #self.print_notice("line "+str(line_counting_number)+": CHECKING FOR DANGLING EXCEPTION OPENER...")
-                            if (next_line_number < 0) or (len(next_line_indent) <= len(indent)):
-                                one_indent = "    "
-                                if line_index+1 < len(self.lines):
-                                    self.lines.insert(line_index+1, indent+one_indent+"pass")
-                                elif line_index+1 == len(self.lines):
-                                    self.lines.append(indent+one_indent+"pass")
-                                self.print_source_error("line "+str(line_counting_number)+": (WARNING: source error automatically corrected) expected indent after '"+except_string+"' so adding 'pass'")
-                        
-                        if exn_indent is not None:
-                            if (len(line.strip()) > 0) and (len(indent) <= len(exn_indent)):
-                                #the following two commented lines don't work for some reason (ignoring, using look-ahead instead)
-                                #if (line_index-exn_line_index<=1):
-                                #    lines.insert(line_index, exn_indent+"pass")
-                                exn_indent = None
-                                exn_object_name = None
-                                exn_line_index = None
-                        if exn_indent is not None:
-                            exn_string_call = exn_object_name+".ToString()"
-                            exn_string_call_index = find_unquoted_not_commented(line, exn_string_call)
-                            if exn_string_call_index > -1:
-                                #NOTE: do not use exn_object_name here, because was eliminated when detected on earlier line
-                                fw_line = line
-                                bad_string = line[exn_string_call_index:exn_string_call_index+len(exn_string_call)]
-                                line = line[:exn_string_call_index] + exn_string + line[exn_string_call_index+len(exn_string_call):]
-                                if fw_line != line:
-                                    self.print_notice("line "+str(line_counting_number)+": (changing) using '"+exn_string+"' instead of '"+bad_string+"'")
-                        else:
-                            exn_opener_noname = "except:"
-                            exn_opener_noname_index = find_unquoted_not_commented(line, exn_opener_noname)
-                            exn_opener = "except "
-                            exn_opener_index = find_unquoted_not_commented(line, exn_opener)
-                            finally_opener = "finally:"
-                            finally_opener_index = find_unquoted_not_commented(line, exn_opener)
-                            if (exn_opener_index > -1) and (exn_opener_index == indent_count):
-                                exn_line_index = line_index
-                                exn_ender_index = find_unquoted_not_commented(line, ":", start=exn_opener_index+len(exn_opener))
-                                exn_indent = indent
-                                if exn_ender_index > -1:
-                                    exn_params = explode_unquoted(line[exn_opener_index+len(exn_opener):exn_ender_index],",")
-                                    exn_identifiers = list()
-                                    for exn_param_original in exn_params:
-                                        exn_param = exn_param_original.strip()
-                                        if exn_param != "Exception":
-                                            exn_identifiers.append(exn_param)
-                                    if len(exn_identifiers) != 1:
-                                        self.print_source_error("line "+str(line_counting_number)+": (source WARNING "+participle+") expected one exception object (got "+str(len(exn_identifiers))+": "+str(exn_identifiers)+")")
-                                    if len(exn_identifiers) > 0:
-                                        exn_object_name = exn_identifiers[0]
-                                        self.print_status("line "+str(line_counting_number)+": detected exception object--saved name as '"+exn_object_name+"'")
-                                else:
-                                    self.print_source_error("line "+str(line_counting_number)+": (source error "+participle+") expected colon after exception")
-                                fw_line = line
-                                line = indent + "except:"
-                                if fw_line != line:
-                                    self.print_notice("line "+str(line_counting_number)+": (changing) using 'except' instead of '"+line_strip+"'")
-                                
-                            elif (exn_opener_noname_index > -1) and (exn_opener_noname_index == indent_count):
-                                exn_line_index = line_index
-                                #exn_ender_index = find_unquoted_not_commented(line, ":", start=exn_opener_index+len(exn_opener))
-                                exn_indent = indent
-                                exn_object_name = None
-                                
+                        #THIS IS NOT YET COMMAND PARSING--SEE BELOW CLASS AND DEF IDENTIFICATION FOR 'ACTUAL LINES' 
                         if class_indent is not None:
                             if (len(line.strip()) > 0) and (len(indent) <= len(class_indent)):  # if equal, then is a global (such as variable, class, or global function)
                                 self.print_status("line "+str(line_counting_number)+": -->ended class "+class_name+" (near '"+line+"')")
@@ -623,7 +562,6 @@ class PCTParser:
                                 
                         elif line_strip[0:len(class_opener)] == class_opener:
                             if method_indent is not None:
-                                
                                 self.print_source_error("line "+str(line_counting_number)+": (source ERROR "+participle+") unexpected classname in method (or function) def")
                        
                             class_indent = indent
@@ -646,10 +584,58 @@ class PCTParser:
                             else:
                                 self.print_source_error("line "+str(line_counting_number)+": (source ERROR "+participle+") expected  '"+class_ender+"' after '"+class_opener+"' and classname")
                         else:
-                            #region actual processing of lines that are neither def nor class nor comment
+                            #region actual processing of lines that are neither def nor class nor comment (put framework removal in parser_op_remove_net_framework case further down)
                             inline_comment_index = find_unquoted_MAY_BE_COMMENTED(line,"#")
                             nonspace_index = find_any_not(line," \t")
                             if parser_op == self.parser_op_preprocess:
+                                if (line_strip == "except , :"):
+                                    line = indent + "except:"
+                                    self.lines[line_index] = line
+                                if (find_unquoted_not_commented(line, "except ") > -1) or (find_unquoted_not_commented(line, "except:") > -1)  or (find_unquoted_not_commented(line, "finally:") > -1):
+                                    next_line_indent = None
+                                    except_string = "except"
+                                    if (find_unquoted_not_commented(line, "finally:") > -1):
+                                        except_string = "finally"
+                                    next_line_number = self.find_line_nonblank_noncomment(line_index+1)
+                                    if next_line_number > -1:
+                                        next_line_indent = get_indent_string(self.lines[next_line_number])
+                                    #self.print_notice("line "+str(line_counting_number)+": CHECKING FOR DANGLING EXCEPTION OPENER...")
+                                    if (next_line_number < 0) or (len(next_line_indent) <= len(indent)):
+                                        if line_index+1 < len(self.lines):
+                                            self.lines.insert(line_index+1, indent+one_indent+"pass")
+                                            extra_lines += 1
+                                        elif line_index+1 == len(self.lines):
+                                            self.lines.append(indent+one_indent+"pass")
+                                            extra_lines += 1
+                                        self.print_source_error("line "+str(line_counting_number)+": (WARNING: source error automatically corrected) expected indent after '"+except_string+"' so adding 'pass'")
+                                #if method_name is not None:
+                                #class_name_thendot = ""
+                                #if class_name is not None:
+                                #    class_name_thendot = class_name + "."
+                                local_aop_index = find_unquoted_not_commented(line, "=")
+                                if local_aop_index > -1:
+                                    identifier_last_index = find_any_not(line, " \t", start=local_aop_index-1, step=-1)
+                                    print("    local_aop_index-1:"+str(local_aop_index-1))
+                                    print("    identifier_last_index:"+str(identifier_last_index))
+                                    if (identifier_last_index > -1) and (line[identifier_last_index] in identifier_chars):
+                                        identifier_ender_index = identifier_last_index + 1
+                                        local_aop_left = line[:identifier_ender_index].strip()
+                                        if (is_identifier_valid(local_aop_left, True)):
+                                            local_aop_right = line[local_aop_index+1:].strip()
+                                            try_constructor = "StreamWriter"
+                                            try_constructor_opener = try_constructor + "("
+                                            if local_aop_right[:len(try_constructor_opener)] == try_constructor_opener:
+                                                #this_symbol = PCTSymbol(local_aop_left, line_counting_number, type_identifier=try_constructor)
+                                                #this_symbol.method_name = method_name
+                                                #this_symbol.class_name = class_name
+                                                if try_constructor == "StreamWriter":
+                                                    self.sw_object_strings.append(local_aop_left)
+                                                    #input("line "+str(line_counting_number)+": got NEW "+try_constructor+" '"+local_aop_left+"'--press enter")
+                                            #else:
+                                                #input("line "+str(line_counting_number)+": got new "+local_aop_right[:len(try_constructor_opener)]+" '"+local_aop_left+"'--press enter")
+                                    #else:
+                                        #self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected variable before '='")
+                                        #input("press enter...")
                                 if method_name == "__init__":
                                     if class_name is not None:
                                         member_opener = "self."
@@ -691,11 +677,214 @@ class PCTParser:
                                     #else global statement but not value
                             #end if self.parser_op_preprocess
                             elif parser_op == self.parser_op_remove_net_framework:
+                                
                                 import_net_framework = "from System"
                                 if (line_strip[0:len(import_net_framework)+1] == import_net_framework+".") or (line_strip[0:len(import_net_framework)+1] == import_net_framework+" "):
                                     line = "#"+line
                                     self.print_notice("line "+str(line_counting_number)+": commenting useless line since imports framework")
                                 else:
+                                    ################## REMOVE FRAMEWORK ACTUAL LINES 
+                                    if sr_object is not None:
+                                        sr_readline = sr_object+".ReadLine()"
+                                        sr_readline_index = find_unquoted_not_commented(line, sr_readline)
+                                        if sr_readline_index > -1:
+                                            #input("    DETECTED '"+sr_readline+"' at "+str(sr_readline_index)+" in '"+line+"'")
+                                            sr_linevar_index = -1
+                                            sr_linevar_ender_index = -1
+                                            if (sr_readline_index==0) or (line[sr_readline_index-1] not in identifier_chars):
+                                                sr_linevar_last_index = find_any_not(line," \t+=",start=sr_readline_index-1,step=-1)
+                                                if sr_linevar_last_index > -1:
+                                                    sr_linevar_ender_index = sr_linevar_last_index + 1
+                                                    sr_linevar_index = find_any_not(line, identifier_and_dot_chars, start=sr_linevar_last_index, step=-1)
+                                                    sr_linevar_index += 1
+                                                    sr_linevar = line[sr_linevar_index:sr_linevar_ender_index]
+                                                    sr_linevar_tmp = sr_linevar+"_with_newline"
+                                                    while self.get_symbol_number_by_fqname(sr_linevar_tmp) > -1:
+                                                        sr_linevar_tmp = "_" + sr_linevar_tmp
+                                                else:
+                                                    #input("    LINEVAR: '"+str(sr_linevar_tmp)+"' (could not find beginning of identifier ending with "+line[sr_readline_index-1]+" in '"+line+"') press enter to continue...")
+                                                    pass
+                                                
+                                            #input("  sr_linevar = "+sr_linevar)
+                                            #input("  sr_linevar_tmp = "+sr_linevar_tmp)
+                                            if (sr_linevar_tmp is not None) and (len(sr_linevar_tmp) > 0):
+                                                #sr_readline_after = line[sr_readline_index+len(sr_readline):]
+                                                sr_readline_eof_condition = "is not None"
+                                                #sr_readline_eof_condition_substringindex = find_unquoted_not_commented(sr_readline_after, 
+                                                sr_readline_eof_condition_index = find_unquoted_not_commented(line, sr_readline_eof_condition, start=sr_linevar_index+len(sr_readline_eof_condition))
+                                                if sr_readline_eof_condition_index < 0:
+                                                    sr_readline_eof_condition = "!= None"
+                                                    sr_readline_eof_condition_index = find_unquoted_not_commented(line, sr_readline_eof_condition, start=sr_linevar_index+len(sr_readline_eof_condition))
+                                                if sr_readline_eof_condition_index < 0:
+                                                    sr_readline_eof_condition = "!=None"
+                                                    sr_readline_eof_condition_index = find_unquoted_not_commented(line, sr_readline_eof_condition, start=sr_linevar_index+len(sr_readline_eof_condition))
+                                                if sr_readline_eof_condition_index > -1:
+                                                    line = line[:sr_readline_eof_condition_index]+"!= \"\""+line[sr_readline_eof_condition_index+len(sr_readline_eof_condition):]
+                                                else:
+                                                    self.print_source_error("line "+str(line_counting_number)+","+str(sr_linevar_index+len(sr_readline_eof_condition))+": (source error "+participle+") expected 'is not None' after 'ReadLine' (can also use '!= None' or '!=None')")
+                                                #input("    INSERTING '"+sr_linevar_tmp+"' press enter to continue...")
+                                                #line = line[0:sr_linevar_index]+sr_linevar_tmp+" = "+sr_object+".readline()"+line[sr_readline_index+len(sr_readline):]
+                                                line = indent+"for "+sr_linevar_tmp+" in "+sr_object+":"
+                                                next_line_indent = indent+one_indent
+                                                next_line_number = self.find_line_nonblank_noncomment(line_index+1)
+                                                if next_line_number > -1:
+                                                    next_line_indent = get_indent_string(self.lines[next_line_number])
+                                                self.lines.insert(line_index+1,next_line_indent+sr_linevar+" = "+sr_linevar_tmp+".rstrip()")
+                                                extra_lines += 1
+                                            else:
+                                                line = line[0:sr_readline_index]+sr_object+".readline()"+line[sr_readline_index+len(sr_readline)]
+                                            
+                                        sr_object_close = sr_object+".Close()"
+                                        sr_object_close_index = find_unquoted_not_commented(line, sr_object_close)
+                                        if (sr_object_close_index==0) or ((sr_object_close_index>-1) and (line[sr_object_close_index-1] not in identifier_chars)):
+                                            sr_object_close_suffix = ""
+                                            if (sr_object_close_index+len(sr_object_close)) < len(line):
+                                                sr_object_close_suffix = line[sr_object_close_index+len(sr_object_close)]
+                                            line = line[0:sr_object_close_index]+sr_object+".close()"+sr_object_close_suffix
+                                            sr_object = None
+                                            sr_linevar = None
+                                            sr_linevar_tmp = None
+                                    
+                                    sr_class = "StreamReader"
+                                    sr_start = 0
+                                    while True:
+                                        sr_class_index = find_identifier(line, sr_class)
+                                        if sr_class_index > -1:
+                                            nonspace_index = find_any_not(line, " \t", start=sr_class_index+len(sr_class))
+                                            if (nonspace_index > -1) and (line[nonspace_index]=="("):
+                                                parenthetical_len = get_operation_chunk_len(line, start=nonspace_index, line_counting_number=line_counting_number)
+                                                if parenthetical_len > 0:
+                                                    line = line[:sr_class_index]+"open"+line[nonspace_index:nonspace_index+parenthetical_len-1]+", 'r')"
+                                                    #input("found 'StreamReader and changed line to "+line+": press enter to continue")
+                                                    sr_object = line[:sr_class_index].strip()
+                                                    if (sr_object[len(sr_object)-1]=="="):
+                                                        sr_object = sr_object[:len(sr_object)-1].strip()
+                                                        nonid_index = find_any_not(sr_object, identifier_and_dot_chars, start=len(sr_object)-1, step=-1)
+                                                        if nonid_index > -1:
+                                                            sr_object = sr_object[nonid_index+1:]
+                                                    #input(sr_class+" object detected: "+sr_object)
+                                                else:
+                                                    self.print_parsing_error("line "+str(line_counting_number)+": (parsing error "+participle+") no method params for "+sr_class)
+                                                    sr_start = sr_class_index + len(sr_class)
+                                                    #input("press enter to continue")
+                                            else:
+                                                #must be a function pointer to sr_class:
+                                                sr_start = sr_class_index + len(sr_class)
+                                                #input("ignoring function pointer, press enter to continue")
+                                        else:
+                                            #if line.find(sr_class)>-1:
+                                                #input("found class named similarly to "+sr_class+" in '"+line+"' but skipping. Press enter...")
+                                            break
+                                    
+                                    #if sw_object is not None:
+                                    for theoretical_sw_object in self.sw_object_strings:
+                                        sw_writeline = theoretical_sw_object+".WriteLine("
+                                        sw_writeline_index = find_unquoted_not_commented(line, sw_writeline)
+                                        if sw_writeline_index > -1:
+                                            #input("    DETECTED '"+sw_writeline+"' at "+str(sw_writeline_index)+" in '"+line+"'")
+                                            sw_writeline_oparen_index = sw_writeline_index+len(sw_writeline)-1
+                                            sw_writeline_parenthetical_len = get_operation_chunk_len(line, start=sw_writeline_oparen_index, line_counting_number=line_counting_number)
+                                            if (sw_writeline_parenthetical_len > 0) and (line[sw_writeline_oparen_index+sw_writeline_parenthetical_len-1]==")"):
+                                                line = line[:sw_writeline_index+len(theoretical_sw_object)] + ".write(" + line[sw_writeline_index+len(sw_writeline):sw_writeline_oparen_index+sw_writeline_parenthetical_len-1] + "+\"\\n\"" + line[sw_writeline_oparen_index+sw_writeline_parenthetical_len-1:]
+                                            else:
+                                                self.print_source_error("line "+str(line_counting_number)+": (source error "+participle+") expected params after WriteLine")
+                                    if sw_object is not None:
+                                        sw_object_close = sw_object+".Close()"
+                                        sw_object_close_index = find_unquoted_not_commented(line, sw_object_close)
+                                        if (sw_object_close_index==0) or ((sw_object_close_index>-1) and (line[sw_object_close_index-1] not in identifier_chars)):
+                                            sw_object_close_suffix = ""
+                                            if (sw_object_close_index+len(sw_object_close)) < len(line):
+                                                sw_object_close_suffix = line[sw_object_close_index+len(sw_object_close)]
+                                            line = line[0:sw_object_close_index]+sw_object+".close()"+sw_object_close_suffix
+                                            sw_object = None
+                                            
+                                                    
+                                    sw_class = "StreamWriter"
+                                    sw_start = 0
+                                    while True:
+                                        sw_class_index = find_identifier(line, sw_class)
+                                        if sw_class_index > -1:
+                                            nonspace_index = find_any_not(line, " \t", start=sw_class_index+len(sw_class))
+                                            if (nonspace_index > -1) and (line[nonspace_index]=="("):
+                                                parenthetical_len = get_operation_chunk_len(line, start=nonspace_index, line_counting_number=line_counting_number)
+                                                if parenthetical_len > 0:
+                                                    line = line[:sw_class_index]+"open"+line[nonspace_index:nonspace_index+parenthetical_len-1]+", 'r')"
+                                                    #input("found 'StreamReader and changed line to "+line+": press enter to continue")
+                                                    sw_object = line[:sw_class_index].strip()
+                                                    if (sw_object[len(sw_object)-1]=="="):
+                                                        sw_object = sw_object[:len(sw_object)-1].strip()
+                                                        nonid_index = find_any_not(sw_object, identifier_and_dot_chars, start=len(sw_object)-1, step=-1)
+                                                        if nonid_index > -1:
+                                                            sw_object = sw_object[nonid_index+1:]
+                                                    #input(sw_class+" object detected: "+sw_object)
+                                                else:
+                                                    self.print_parsing_error("line "+str(line_counting_number)+": (parsing error "+participle+") no method params for "+sw_class)
+                                                    sw_start = sw_class_index + len(sw_class)
+                                                    #input("press enter to continue")
+                                            else:
+                                                #must be a function pointer to sw_class:
+                                                sw_start = sw_class_index + len(sw_class)
+                                                #input("ignoring function pointer, press enter to continue")
+                                        else:
+                                            #if line.find(sw_class)>-1:
+                                                #input("found class named similarly to "+sw_class+" in '"+line+"' but skipping. Press enter...")
+                                            break
+                                    
+                                    if exn_indent is not None:
+                                        if (len(line.strip()) > 0) and (len(indent) <= len(exn_indent)):
+                                            #the following two commented lines don't work for some reason (ignoring, using look-ahead instead)
+                                            #if (line_index-exn_line_index<=1):
+                                            #    lines.insert(line_index, exn_indent+"pass")
+                                            exn_indent = None
+                                            exn_object_name = None
+                                            exn_line_index = None
+                                    if exn_indent is not None:
+                                        exn_string_call = exn_object_name+".ToString()"
+                                        exn_string_call_index = find_unquoted_not_commented(line, exn_string_call)
+                                        if exn_string_call_index > -1:
+                                            #NOTE: do not use exn_object_name here, because was eliminated when detected on earlier line
+                                            fw_line = line
+                                            bad_string = line[exn_string_call_index:exn_string_call_index+len(exn_string_call)]
+                                            line = line[:exn_string_call_index] + exn_string + line[exn_string_call_index+len(exn_string_call):]
+                                            if fw_line != line:
+                                                self.print_notice("line "+str(line_counting_number)+": (changing) using '"+exn_string+"' instead of '"+bad_string+"'")
+                                    else:
+                                        exn_opener_noname = "except:"
+                                        exn_opener_noname_index = find_unquoted_not_commented(line, exn_opener_noname)
+                                        exn_opener = "except "
+                                        exn_opener_index = find_unquoted_not_commented(line, exn_opener)
+                                        finally_opener = "finally:"
+                                        finally_opener_index = find_unquoted_not_commented(line, exn_opener)
+                                        if (exn_opener_index > -1) and (exn_opener_index == indent_count):
+                                            exn_line_index = line_index
+                                            exn_ender_index = find_unquoted_not_commented(line, ":", start=exn_opener_index+len(exn_opener))
+                                            exn_indent = indent
+                                            if exn_ender_index > -1:
+                                                exn_params = explode_unquoted(line[exn_opener_index+len(exn_opener):exn_ender_index],",")
+                                                exn_identifiers = list()
+                                                for exn_param_original in exn_params:
+                                                    exn_param = exn_param_original.strip()
+                                                    if exn_param != "Exception":
+                                                        exn_identifiers.append(exn_param)
+                                                if len(exn_identifiers) != 1:
+                                                    self.print_source_error("line "+str(line_counting_number)+": (source WARNING "+participle+") expected one exception object (got "+str(len(exn_identifiers))+": "+str(exn_identifiers)+")")
+                                                if len(exn_identifiers) > 0:
+                                                    exn_object_name = exn_identifiers[0]
+                                                    self.print_status("line "+str(line_counting_number)+": detected exception object--saved name as '"+exn_object_name+"'")
+                                            else:
+                                                self.print_source_error("line "+str(line_counting_number)+": (source error "+participle+") expected colon after exception")
+                                            fw_line = line
+                                            line = indent + "except:"
+                                            if fw_line != line:
+                                                self.print_notice("line "+str(line_counting_number)+": (changing) using 'except' instead of '"+line_strip+"'")
+                                            
+                                        elif (exn_opener_noname_index > -1) and (exn_opener_noname_index == indent_count):
+                                            exn_line_index = line_index
+                                            #exn_ender_index = find_unquoted_not_commented(line, ":", start=exn_opener_index+len(exn_opener))
+                                            exn_indent = indent
+                                            exn_object_name = None
+                                    
+                                    
                                     start_index = 0
                                     while True:
                                         cts = "Convert.ToString"
@@ -771,12 +960,17 @@ class PCTParser:
                                                         parent_start_after_index = find_any_not(line[0:dot_index], identifier_chars, step=-1)
                                                         if parent_start_after_index >= -1:
                                                             parent_index = parent_start_after_index + 1
-                                                            parent_string = line[parent_start_after_index:dot_index]
+                                                            parent_string = line[parent_index:dot_index]
+                                                            fwss_after_method = line[cparen_index+1:]
+                                                            print("    parent_index:"+str(parent_index))
+                                                            print("    parent_string:"+parent_string)
+                                                            print("    fwss_after_method:"+fwss_after_method)
+                                                            
                                                             if (len(params)>1):
-                                                                line = line[0:parent_index]+parent_string+"["+params[0]+":"+params[0]+"+"+params[1]+"]"
+                                                                line = line[0:parent_index]+parent_string+"["+params[0]+":"+params[0]+"+"+params[1]+"]"+fwss_after_method
                                                             else:
-                                                                line = line[0:parent_index]+parent_string+"["+params[0]+":]"
-                                                            self.print_notice("line "+str(line_counting_number)+","+str(fwss_index)+": (changing) using slices instead of Substring")
+                                                                line = line[0:parent_index]+parent_string+"["+params[0]+":]"+fwss_after_method
+                                                            self.print_notice("line "+str(line_counting_number)+","+str(fwss_index)+": (changing) using slices ('"+line+"') instead of Substring")
                                                         else:
                                                             
                                                             self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected classname before "+fwss+" at ["+str(fwss_index)+"]")
@@ -806,6 +1000,7 @@ class PCTParser:
                                     if fw_line != line:
                                         self.print_notice("line "+str(line_counting_number)+": (changing) using python sys.stderr.write, write \\n, flush instead of Console.Error.WriteLine")
                                         self.lines = self.lines[:line_index+1] + [indent+"sys.stderr.write(\"\\n\")",indent+"sys.stderr.flush()"] + self.lines[line_index+1:]
+                                        extra_lines += 2
                                         
                                     #TODO: should sys.stderr.write(str(x)):
                                     fw_line = line
@@ -841,10 +1036,15 @@ class PCTParser:
                                     line = line.replace(".Replace(",".replace(")
                                     if fw_line != line:
                                         self.print_notice("line "+str(line_counting_number)+": (changing) using '.replace(' instead of '.Replace(")
+                                    fw_line = line
                                     line = line.replace(" = ArrayList("," = list(")
                                     if fw_line != line:
                                         self.print_notice("line "+str(line_counting_number)+": (changing) using list instead of ArrayList")
-
+                                    fw_line = line
+                                    line = line.replace(".Trim()",".strip()")
+                                    if fw_line != line:
+                                        self.print_notice("line "+str(line_counting_number)+": (changing) using 'strip' instead of 'Trim'")
+                                    
                                     #NOTE: lines from multiline sections (parsed below)
                                     # must be detected in reverse order, to preserve None value when previous line is not present
                                     enumerable_name_prefix = "enumerator = "
@@ -896,7 +1096,6 @@ class PCTParser:
                                                 self.print_notice("line "+str(line_counting_number)+": (changing) removing useless line '"+enumerator_loop+"' (using list iteration instead)")
                                             else:
                                                 enumerator_loop_indent = None
-                                                
                                                 self.print_source_error("line "+str(line_counting_number)+": (source ERROR) unexpected '"+enumerator_loop+"' (since previous line is missing arraylist name which would have been preceded by '"+enumerable_name_prefix+"' notation).")
                                         else:
                                             enumerator_loop_indent = None
@@ -954,10 +1153,19 @@ class PCTParser:
                 if outfile is not None:
                     outfile.write(line+self.newline)
                 line_index += 1
-                line_counting_number += 1
+                line_counting_number = line_index + 1 - extra_lines_cumulative
+                if extra_lines > 0:
+                    extra_lines_cumulative += 1
+                    extra_lines_passed += 1
+                if extra_lines_passed >= extra_lines:
+                    extra_lines = 0
+                    extra_lines_passed = 0
+                
             #end while lines
+            if sw_object is not None:
+                self.print_source_error(participle+": source ended before '"+sw_object+"' (file stream) was closed")
             if is_multiline_string:
-                msg = participle+": file ended before multiline string or comment"
+                msg = participle+": source ended before multiline string or comment"
                 if multiline_string_line_counting_number is not None:
                     msg += " starting on line " + str(multiline_string_line_counting_number)
                 msg += " ended"

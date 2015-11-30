@@ -20,6 +20,21 @@ def get_indent_string(line):
         result = line[:ender_index]
     return result
 
+def is_identifier_valid(val, is_dot_allowed):
+    result = False
+    these_id_chars = identifier_chars
+    if is_dot_allowed:
+        these_id_chars = identifier_and_dot_chars
+    for index in range(0,len(val)):
+        if val[index] in these_id_chars:
+            result = True
+        else:
+            result = False
+            break
+    return result
+    
+
+#formerly get_params_len
 def get_operation_chunk_len(val, start=0, step=1, line_counting_number=None):
     result = 0
     openers = "([{"
@@ -65,6 +80,25 @@ def get_operation_chunk_len(val, start=0, step=1, line_counting_number=None):
         result += 1
         if (in_quote is None) and (len(opens)==0) and ((index>=len(val)) or (val[index] not in identifier_and_dot_chars)):
             break
+    return result
+
+def find_identifier(line, identifier_string, start=0):
+    result = -1
+    start_index = start
+    if (identifier_string is not None) and (len(identifier_string) > 0) and (line is not None) and (len(line) > 0):
+        while True:
+            try_index = find_unquoted_not_commented(line, identifier_string, start=start_index)
+            if (try_index > -1):
+                if ((try_index==0) or (line[try_index-1] not in identifier_chars)) and ((try_index+len(identifier_string)==len(line)) or (line[try_index+len(identifier_string)] not in identifier_chars)):
+                    result = try_index
+                    #input(identifier_string+"starts after '"+line[try_index]+"' ends before '"+line[try_index+len(identifier_string)]+"'")
+                    break
+                else:
+                    #match is part of a different identifier, so skip it
+                    #input(identifier_string+" does not after '"+line[try_index]+"' ends before '"+line[try_index+len(identifier_string)]+"'")
+                    start_index = try_index + len(identifier_string)
+            else:
+                break
     return result
 
 def get_newline_in_data(data):
