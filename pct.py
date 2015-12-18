@@ -579,15 +579,26 @@ class PCTParser:
                             #else can never happen since def_string is already detected as the start of the line in the outer case
                                 
                         elif line_strip[0:len(class_opener)] == class_opener:
+                            class_opener_index = find_unquoted_not_commented(line,class_opener)
+                            class_name_index = None
+                            if class_opener_index > -1:
+                                class_name_index = find_any_not(line, " \t", start=class_opener_index+len(class_opener))
+                            else:
+                                self.print_parsing_error("line "+str(line_counting_number)+": (parsing error "+participle+") no  class_opener for class")
                             if method_indent is not None:
                                 self.print_source_error("line "+str(line_counting_number)+": (source ERROR "+participle+") unexpected classname in method (or function) def")
                        
                             class_indent = indent
-                            class_ender = "("
-                            class_ender_index = find_unquoted_not_commented(line_strip,class_ender,start=len(class_opener))
+                            class_ender = ":"
+                            class_name_ender = "("
+                            class_name_ender_index = find_unquoted_not_commented(line,class_name_ender,start=class_name_index)
+                            class_ender_index = find_unquoted_not_commented(line,class_ender,start=class_name_index)
+                            if class_name_ender_index < 0:
+                                class_name_ender = ":"
+                                class_name_ender_index = find_unquoted_not_commented(line,class_name_ender,start=class_name_index)
                             class_name = None
-                            if class_ender_index >= 0:
-                                class_name = line_strip[len(class_opener):class_ender_index].strip()
+                            if class_name_ender_index >= 0:
+                                class_name = line[class_name_index:class_name_ender_index].strip()
                                 if len(class_name) > 0:
                                     if parser_op == self.parser_op_preprocess:
                                         pctclass = PCTType(class_name)
@@ -595,6 +606,11 @@ class PCTParser:
                                         class_number = len(self.custom_types) - 1
                                     else:
                                         class_number = self.get_class_number(class_name)
+                                    if parser_op == self.parser_op_remove_net_framework:
+                                        netobject_subclass_marker = "(object)"
+                                        if (class_name_ender == "(") and (len(line) >= (class_name_ender_index+len(netobject_subclass_marker))) and (line[class_name_ender_index:class_name_ender_index+len(netobject_subclass_marker)] == netobject_subclass_marker):
+                                            line = line[:class_name_ender_index] + line[class_ender_index:]
+                                            self.print_notice("line "+str(line_counting_number)+": removing 'object' inheritance since needs .net framework")
                                     self.print_status("line "+str(line_counting_number)+": started class "+class_name+" cache index ["+str(class_number)+"]")
                                 else:
                                     
