@@ -1,30 +1,30 @@
 # Author: Jake Gustafson
-# Purpose: processes output from C# to Python converter at http://codeconverter.sharpdevelop.net/SnippetConverter.aspx 
+# Purpose: processes output from C# to Python converter at http://codeconverter.sharpdevelop.net/SnippetConverter.aspx
 # (or identical output from SharpDevelop 3.0 (Project, Tools, C# to Python))
 # License: GPL
 import os
 #import datetime
 import time
-from pcttext import *
+from expertmm import *
 #import re  # re.escape -- why doesn't it work (printing result shows backslash then actually ends the line)
 
 
 class PCTLanguageKeyword:
-    
+
     name = None
-    
+
     def __init__(self, name):
         self.name = name
 
 
 class PCTParam:
-    
+
     name = None
     is_required = None
     method_name = None
     class_name = None
     default_value = None
-    
+
     def __init__(self,name,method_name,is_required=True):
         self.name = name
         self.method_name = method_name
@@ -43,7 +43,7 @@ class PCTMethod:
     name = None
     line_counting_number = None
     class_name = None
-    
+
     def __init__(self, name, line_counting_number=None):
         self.name = name
         self.line_counting_number = line_counting_number
@@ -55,20 +55,20 @@ class PCTMethod:
         return result
 
 class PCTType:
-    
+
     name = None
     constructor_params = None
-    
+
     def __init__(self, name, constructor_params=["value"]):
         self.name = name
         self.constructor_params = list()
-        
+
     def get_fully_qualified_name(self):
         return self.name
 
 
 class PCTSymbol:
-    
+
     name = None
     line_counting_number = None
     including_to_line_counting_number = None
@@ -76,7 +76,7 @@ class PCTSymbol:
     class_name = None
     method_name = None  #created in the scope of a method (or function) def
     default_value = None
-    
+
     def __init__(self, name, line_counting_number, type_identifier=None, including_to_line_counting_number=None):
         self.name = name
         self.line_counting_number = line_counting_number
@@ -85,7 +85,7 @@ class PCTSymbol:
         self.method_name = None
         self.default_value = None
         self.including_to_line_counting_number = including_to_line_counting_number
-    
+
     def get_fully_qualified_name(self):
         result = self.name
         if self.method_name is not None:
@@ -95,14 +95,14 @@ class PCTSymbol:
         return result
 
 class PCTParser:
-    
+
     custom_types = None
     builtin_types = None
     symbols = None  # including variables
     functions = None
     command_keywords = None
     #data = None
-    
+
     lines = None
     operator_sets = None  #in order of operation
     arithmetic_pre_operators = None  #**
@@ -127,23 +127,23 @@ class PCTParser:
     extra_lines_cumulative = None
     parser_op_preprocess = "preprocess"
     parser_op_remove_net_framework = "remove_net_framework"
-    
+
     def print_parsing_error(self, msg):
-        
+
         print("  (PARSING) "+msg)
-        
+
     def print_source_error(self, msg):
-        
+
         print("  (SOURCE) "+msg)
-    
+
     def print_notice(self, msg):
         if self.show_notices:
             print("  (CHANGE) "+msg)
-    
+
     def print_status(self, msg):
-        
+
         print("  (STATUS) "+msg)
-        
+
     def get_class_number(self, name):
         result = -1
         for index in range(0, len(self.custom_types)):
@@ -159,7 +159,7 @@ class PCTParser:
                 result = index
                 break
         return result
-        
+
     #def get_function_number_by_fqname(self, fqname):
         #result = -1
         #for index in range(0, len(self.functions)):
@@ -167,7 +167,7 @@ class PCTParser:
                 #result = index
                 #break
         #return result
-    
+
     def save_identifier_lists(self, outfile_path):
         self.print_status("save_identifier_lists...")
         self.outfile_path = outfile_path
@@ -200,7 +200,7 @@ class PCTParser:
                     line_counting_number_comment += " to " + str(var.including_to_line_counting_number)
             elif var.including_to_line_counting_number is not None:
                 line_counting_number_comment += "#(missing starting line number) to line " + str(var.including_to_line_counting_number)
-                    
+
             outfile.write(indent+"  " + ("  "*fqname.count(".")) + type_prefix + fqname + assignment_right_string + line_counting_number_comment + self.newline)
         outfile.write(indent+"functions:" + self.newline)
         for var in self.functions:
@@ -208,7 +208,7 @@ class PCTParser:
             outfile.write(indent+"  " + ("  "*fqname.count(".")) + fqname + self.newline)
         outfile.close()
         self.print_status("OK (save_identifier_lists to '"+outfile_path+"')")
-    
+
     def __init__(self, file_path):
         self.file_path = file_path
         #self.data = None
@@ -319,11 +319,11 @@ class PCTParser:
         self.logical_operators.append("or")
         self.logical_operators.append("and")
         self.operator_sets.append(self.logical_operators)
-        
+
         self.load_file(file_path)
-        
+
         self.process_python_lines(self.parser_op_preprocess)
-        
+
     def load_file(self, infile_path):
         self.lines = list()
         #self.data = None
@@ -355,7 +355,7 @@ class PCTParser:
         #else:
         #    self.print_status("Using '"+re_escape_visible(self.newline)+"' for newline (detected in '"+self.file_path+"').")
     #end load_file
-    
+
     #formerly preprocess_python_framework_lines(self, infile_path)
     def process_python_lines(self, parser_op):
         participle = None
@@ -399,7 +399,7 @@ class PCTParser:
             is_method_bad = False
             method_indent = None
             extra_lines = 0
-            
+
             extra_lines_passed = 0
             if parser_op == self.parser_op_preprocess:
                 self.extra_lines_cumulative = 0
@@ -474,7 +474,7 @@ class PCTParser:
                                             if len(multiline_string_name) < 1:
                                                 multiline_string_name = None
                                                 self.print_source_error("line "+str(line_counting_number)+": (source error "+participle+") expected identifier before assignment operator (required since multiline string literal is preceeded by assignment operator)")
-                                
+
                                 else:
                                     multiline_string_name = None
                     class_opener = "class "
@@ -499,7 +499,7 @@ class PCTParser:
                             self.lines[line_index] = line
                             line_strip = line.strip()
                     if (not is_multiline_string) and (line_strip[:1] != "#"):
-                        #THIS IS NOT YET COMMAND PARSING--SEE BELOW CLASS AND DEF IDENTIFICATION FOR 'ACTUAL LINES' 
+                        #THIS IS NOT YET COMMAND PARSING--SEE BELOW CLASS AND DEF IDENTIFICATION FOR 'ACTUAL LINES'
                         if class_indent is not None:
                             if (len(line.strip()) > 0) and (len(indent) <= len(class_indent)):  # if equal, then is a global (such as variable, class, or global function)
                                 self.print_status("line "+str(line_counting_number)+": -->ended class "+class_name+" (near '"+line+"')")
@@ -529,7 +529,7 @@ class PCTParser:
                                             symbol.default_value = assignment_right
                                             self.symbols.append(symbol)
                                     else:
-                                        
+
                                         self.print_source_error("line "+str(line_counting_number)+": (source error "+participle+") expected '"+assignment_operator+"' then value after class member")
                                 #else:
                                     #class method (processed in separate case below, and parent class is added automatically if present)
@@ -541,7 +541,7 @@ class PCTParser:
                                     #if method_name_ender_index>):
                                     method_name = line[method_name_opener_index+len(def_string):method_name_ender_index]
                                     method_indent = indent
-                                    method_number = -1                
+                                    method_number = -1
                                     if parser_op == self.parser_op_preprocess:
                                         if class_name is not None:
                                             method_number = self.get_function_number_using_dot_notation(class_name+"."+method_name)
@@ -573,11 +573,11 @@ class PCTParser:
                                     #
                                     #self.print_source_error("  source error "+participle+" line "+str(line_counting_number)+": couldn't find '(' after '"+def_string+"' and method name")
                                 else:
-                                    
+
                                     self.print_source_error("line "+str(line_counting_number)+": (source ERROR "+participle+")'"+def_string+"' should be followed by identifier then '('")
-                                    
+
                             #else can never happen since def_string is already detected as the start of the line in the outer case
-                                
+
                         elif line_strip[0:len(class_opener)] == class_opener:
                             class_opener_index = find_unquoted_not_commented(line,class_opener)
                             class_name_index = None
@@ -587,7 +587,7 @@ class PCTParser:
                                 self.print_parsing_error("line "+str(line_counting_number)+": (parsing error "+participle+") no  class_opener for class")
                             if method_indent is not None:
                                 self.print_source_error("line "+str(line_counting_number)+": (source ERROR "+participle+") unexpected classname in method (or function) def")
-                       
+
                             class_indent = indent
                             class_ender = ":"
                             class_name_ender = "("
@@ -613,7 +613,7 @@ class PCTParser:
                                             self.print_notice("line "+str(line_counting_number)+": removing 'object' inheritance since needs .net framework")
                                     self.print_status("line "+str(line_counting_number)+": started class "+class_name+" cache index ["+str(class_number)+"]")
                                 else:
-                                    
+
                                     self.print_source_error("line "+str(line_counting_number)+": (source ERROR "+participle+") expected classname then '"+class_ender+"' after '"+class_opener+"'")
                             else:
                                 self.print_source_error("line "+str(line_counting_number)+": (source ERROR "+participle+") expected  '"+class_ender+"' after '"+class_opener+"' and classname")
@@ -711,13 +711,13 @@ class PCTParser:
                                     #else global statement but not value
                             #end if self.parser_op_preprocess
                             elif parser_op == self.parser_op_remove_net_framework:
-                                
+
                                 import_net_framework = "from System"
                                 if (line_strip[0:len(import_net_framework)+1] == import_net_framework+".") or (line_strip[0:len(import_net_framework)+1] == import_net_framework+" "):
                                     line = "#"+line
                                     self.print_notice("line "+str(line_counting_number)+": commenting useless line since imports framework")
                                 else:
-                                    ################## REMOVE FRAMEWORK ACTUAL LINES 
+                                    ################## REMOVE FRAMEWORK ACTUAL LINES
                                     if sr_object is not None:
                                         sr_readline = sr_object+".ReadLine()"
                                         sr_readline_index = find_unquoted_not_commented(line, sr_readline)
@@ -738,13 +738,13 @@ class PCTParser:
                                                 else:
                                                     #input("    LINEVAR: '"+str(sr_linevar_tmp)+"' (could not find beginning of identifier ending with "+line[sr_readline_index-1]+" in '"+line+"') press enter to continue...")
                                                     pass
-                                                
+
                                             #input("  sr_linevar = "+sr_linevar)
                                             #input("  sr_linevar_tmp = "+sr_linevar_tmp)
                                             if (sr_linevar_tmp is not None) and (len(sr_linevar_tmp) > 0):
                                                 #sr_readline_after = line[sr_readline_index+len(sr_readline):]
                                                 sr_readline_eof_condition = "is not None"
-                                                #sr_readline_eof_condition_substringindex = find_unquoted_not_commented(sr_readline_after, 
+                                                #sr_readline_eof_condition_substringindex = find_unquoted_not_commented(sr_readline_after,
                                                 sr_readline_eof_condition_index = find_unquoted_not_commented(line, sr_readline_eof_condition, start=sr_linevar_index+len(sr_readline_eof_condition))
                                                 if sr_readline_eof_condition_index < 0:
                                                     sr_readline_eof_condition = "!= None"
@@ -767,7 +767,7 @@ class PCTParser:
                                                 extra_lines += 1
                                             else:
                                                 line = line[0:sr_readline_index]+sr_object+".readline()"+line[sr_readline_index+len(sr_readline)]
-                                            
+
                                         sr_object_close = sr_object+".Close()"
                                         sr_object_close_index = find_unquoted_not_commented(line, sr_object_close)
                                         if (sr_object_close_index==0) or ((sr_object_close_index>-1) and (line[sr_object_close_index-1] not in identifier_chars)):
@@ -778,7 +778,7 @@ class PCTParser:
                                             sr_object = None
                                             sr_linevar = None
                                             sr_linevar_tmp = None
-                                    
+
                                     sr_class = "StreamReader"
                                     sr_start = 0
                                     while True:
@@ -809,7 +809,7 @@ class PCTParser:
                                             #if line.find(sr_class)>-1:
                                                 #input("found class named similarly to "+sr_class+" in '"+line+"' but skipping. Press enter...")
                                             break
-                                    
+
                                     #if sw_object is not None:
                                     for theoretical_sw_object in self.sw_object_strings:
                                         sw_writeline = theoretical_sw_object+".WriteLine("
@@ -836,8 +836,8 @@ class PCTParser:
                                                 sw_object_close_suffix = line[sw_object_close_index+len(sw_object_close)]
                                             line = line[0:sw_object_close_index]+sw_object+".close()"+sw_object_close_suffix
                                             sw_object = None
-                                            
-                                                    
+
+
                                     sw_class = "StreamWriter"
                                     sw_start = 0
                                     while True:
@@ -868,7 +868,7 @@ class PCTParser:
                                             #if line.find(sw_class)>-1:
                                                 #input("found class named similarly to "+sw_class+" in '"+line+"' but skipping. Press enter...")
                                             break
-                                    
+
                                     if exn_indent is not None:
                                         if (len(line.strip()) > 0) and (len(indent) <= len(exn_indent)):
                                             #the following two commented lines don't work for some reason (ignoring, using look-ahead instead)
@@ -916,14 +916,14 @@ class PCTParser:
                                             line = indent + "except:"
                                             if fw_line != line:
                                                 self.print_notice("line "+str(line_counting_number)+": (changing) using 'except' instead of '"+line_strip+"'")
-                                            
+
                                         elif (exn_opener_noname_index > -1) and (exn_opener_noname_index == indent_count):
                                             exn_line_index = line_index
                                             #exn_ender_index = find_unquoted_not_commented(line, ":", start=exn_opener_index+len(exn_opener))
                                             exn_indent = indent
                                             exn_object_name = None
-                                    
-                                    
+
+
                                     start_index = 0
                                     while True:
                                         cts = "Convert.ToString"
@@ -1004,29 +1004,29 @@ class PCTParser:
                                                             print("    parent_index:"+str(parent_index))
                                                             print("    parent_string:"+parent_string)
                                                             print("    fwss_after_method:"+fwss_after_method)
-                                                            
+
                                                             if (len(params)>1):
                                                                 line = line[0:parent_index]+parent_string+"["+params[0]+":"+params[0]+"+"+params[1]+"]"+fwss_after_method
                                                             else:
                                                                 line = line[0:parent_index]+parent_string+"["+params[0]+":]"+fwss_after_method
                                                             self.print_notice("line "+str(line_counting_number)+","+str(fwss_index)+": (changing) using slices ('"+line+"') instead of Substring")
                                                         else:
-                                                            
+
                                                             self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected classname before "+fwss+" at ["+str(fwss_index)+"]")
                                                             break
                                                     else:
-                                                        
+
                                                         self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected unquoted ')' after "+fwss+" at ["+str(fwss_index)+"]")
                                                         break
                                                 else:
-                                                    
+
                                                     self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected '(' after "+fwss+" at ["+str(fwss_index)+"]")
                                                     is_mega_debug = True
                                                     oparen_index = find_unquoted_not_commented(line, "(", fwss_index+len(fwss))
                                                     is_mega_debug = False
                                                     break
                                             else:
-                                                
+
                                                 self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected '.' before "+fwss+" at ["+str(fwss_index)+"]")
                                                 break
                                         else:
@@ -1040,7 +1040,7 @@ class PCTParser:
                                         self.print_notice("line "+str(line_counting_number)+": (changing) using python sys.stderr.write \\n, flush instead of Console.Error.WriteLine()")
                                         self.lines = self.lines[:line_index+1] + [indent+"sys.stderr.flush()"] + self.lines[line_index+1:]
                                         extra_lines += 1
-                                    
+
                                     #TODO: should use print(x, file=sys.stderr):
                                     fw_line = line
                                     line = line.replace("Console.Error.WriteLine","sys.stderr.write")
@@ -1048,7 +1048,7 @@ class PCTParser:
                                         self.print_notice("line "+str(line_counting_number)+": (changing) using python sys.stderr.write, write \\n, flush instead of Console.Error.WriteLine")
                                         self.lines = self.lines[:line_index+1] + [indent+"sys.stderr.write(\"\\n\")",indent+"sys.stderr.flush()"] + self.lines[line_index+1:]
                                         extra_lines += 2
-                                        
+
                                     #TODO: should sys.stderr.write(str(x)):
                                     fw_line = line
                                     line = line.replace("Console.Error.Write","sys.stderr.write")
@@ -1094,14 +1094,14 @@ class PCTParser:
                                     line = line.replace(".Trim()",".strip()")
                                     if fw_line != line:
                                         self.print_notice("line "+str(line_counting_number)+": (changing) using 'strip' instead of 'Trim'")
-                                    
+
                                     #NOTE: lines from multiline sections (parsed below)
                                     # must be detected in reverse order, to preserve None value when previous line is not present
                                     enumerable_name_prefix = "enumerator = "
                                     enumerable_name_suffix = ".GetEnumerator()"
                                     enumerator_loop = "while enumerator.MoveNext():"
                                     enumerator_current = " = enumerator.Current"
-                                    
+
                                     enumerator_current_index = find_unquoted_not_commented(line,enumerator_current)
                                     if enumerator_current_index >= 0:
                                         if enumerator_loop_indent is not None:
@@ -1117,7 +1117,7 @@ class PCTParser:
                                                     theoretical_name = class_name+"._"+arraylist_name
                                                 symbol_number = self.get_symbol_number_using_dot_notation(theoretical_name)
                                                 if symbol_number < 0:
-                                                    
+
                                                     self.print_source_error("line "+str(arraylist_name_line_counting_number)+": (source ERROR) used '"+fqname+"' before declaration (tried to fix as [self a.k.a.]'"+theoretical_name+"').")
                                                     if class_name is not None:
                                                         print("    class:"+class_name)
@@ -1130,13 +1130,13 @@ class PCTParser:
                                             arraylist_name = None
                                             enumerator_loop_indent = None
                                         else:
-                                            
+
                                             self.print_source_error("line "+str(line_counting_number)+": (source ERROR) unexpected '"+enumerator_current+"' (since previous line is missing '"+enumerator_loop+"' or line before that is missing arraylist name which would have been preceded by '"+enumerable_name_prefix+"' notation) {line:"+line+"}.")
                                     else:
                                         if enumerator_loop_indent is not None:
-                                            
+
                                             self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected '"+enumerator_current+"' since '"+enumerator_loop+"' was on previous line and arraylist ("+arraylist_name+") was on line before that.")
-                                            
+
 
                                         enumerator_loop_index = find_unquoted_not_commented(line,enumerator_loop)
                                         if enumerator_loop_index >= 0:
@@ -1150,9 +1150,9 @@ class PCTParser:
                                         else:
                                             enumerator_loop_indent = None
                                             if arraylist_name is not None:
-                                                
+
                                                 self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected '"+enumerator_loop+"' since arraylist ("+arraylist_name+") was on previous line.")
-                                                
+
 
                                             enumerable_name_prefix_index = find_unquoted_not_commented(line,enumerable_name_prefix)
                                             if enumerable_name_prefix_index >= 0:
@@ -1162,7 +1162,7 @@ class PCTParser:
                                                     arraylist_name_line_counting_number = line_counting_number
                                                     self.print_status("line "+str(line_counting_number)+": detected arraylist--saved name as '"+arraylist_name+"'")
                                                 else:
-                                                    
+
                                                     self.print_source_error("line "+str(line_counting_number)+": (source ERROR) expected '"+enumerable_name_suffix+"' after '"+enumerable_name_prefix+"'")
                                                 line = "#"+line
                                             else:
@@ -1197,7 +1197,7 @@ class PCTParser:
                         else:
                             if parser_op == self.parser_op_preprocess:
                                 self.print_status("line "+str(line_counting_number)+": (source notice "+participle+") treating multiline string as multiline comment")
-                            
+
                     else:
                         multiline_string_value += line
                 if outfile is not None:
@@ -1210,7 +1210,7 @@ class PCTParser:
                 if extra_lines_passed >= extra_lines:
                     extra_lines = 0
                     extra_lines_passed = 0
-                
+
             #end while lines
             if sw_object is not None:
                 self.print_source_error(participle+": source ended before '"+sw_object+"' (file stream) was closed")
@@ -1224,7 +1224,7 @@ class PCTParser:
                 outfile.close()
         #end if participle is not None (no valid operation detected)
     #end process_python_lines
-    
+
 
     def framework_to_standard_python(self, outfile_path):
         global is_mega_debug
@@ -1233,7 +1233,7 @@ class PCTParser:
 
     #first index returns how many lines are in the assignment
     # (only works for triple-double quote syntax so far) and
-    # formerly called: 
+    # formerly called:
     #def split_assignment_line(index, assignment_operator_list):
     def collect_python_identifiers(self, index, assignment_operator_list):
         result = None
@@ -1284,14 +1284,14 @@ class PCTParser:
                     #append last part of it (after last non-parenthetical operator or if no non-parenthetical operator)
                     assign_right_components.append(assign_right_destructable.strip())
                 elif strip_assign_op_index == 0:
-                    
+
                     self.print_source_error("line "+str(line_index+1)+": (source ERROR) unexpected assignment operator (expected identifier first) at ["+str(assign_op_index)+"] (before identifier)")
                 else:
-                    
+
                     self.print_parsing_error("line "+str(line_index+1)+": (parsing error) expected assignment operator")
         return result
     #end collect_python_identifiers
-    
+
     #def get_type_identifier_recursively(line):
     #    result = None
     #    line_index = 0
@@ -1299,11 +1299,11 @@ class PCTParser:
     #    while line_index < len(self.lines):
     #        line_original = self.lines[line_index]
     #        line = line_original
-    #        
+    #
     #        line_index += 1
     #        line_counting_number += 1
     #    return result
-                
+
     def get_python_first_explicit_type_id(self, operation_right_side_string, line_counting_number=-1):
         result = None
         operation_right_side_string = operation_right_side_string.strip()
@@ -1311,7 +1311,7 @@ class PCTParser:
         staticmethod_opener = "staticmethod("
         if operation_right_side_string[:len(staticmethod_opener)] == staticmethod_opener:
             result = "staticmethod"
-        
+
         if result is None:
             number_string = operation_right_side_string
             if operation_right_side_string[0:1] == "-":
@@ -1331,7 +1331,7 @@ class PCTParser:
                         result = "decimal"
                     #TODO: make this recursive here (process operator at junk_index and all others)
                 else:
-                    
+
                     line_display_string = "near '"+operation_right_side_string+"'"
                     if line_counting_number > 0:
                         line_display_string = "on line "+str(line_counting_number)
@@ -1349,7 +1349,7 @@ class PCTParser:
                             break
             else:
                 result = "int"
-                
+
         if result is None:
             these_types = self.custom_types + self.builtin_types
             for this_type in these_types:
@@ -1360,7 +1360,7 @@ class PCTParser:
                     break
         return result
     #end get_python_first_explicit_type_id
-    
+
     def get_function_number_using_dot_notation(self, fully_qualified_name):
         result = -1
         class_name = None
@@ -1380,7 +1380,7 @@ class PCTParser:
                 result = index
                 break
         return result
-    
+
     def get_symbol_number_using_dot_notation(self, fully_qualified_name):
         result = -1
         for index in range(0,len(self.symbols)):
@@ -1394,7 +1394,7 @@ class PCTParser:
                 result = index
                 break
         return result
-        
+
     def find_line_nonblank_noncomment(self, start_line_number=0):
         result = -1
         #is_multiline_string = False
@@ -1414,11 +1414,11 @@ class PCTParser:
                 break
             line_index += 1
         return result
-        
+
     #def get_parsed_symbol_by_id(sid):
         #result = None
         #return result
-    
+
     #def name_psid(name):
         #result = None
         #prefix = "class["
@@ -1427,15 +1427,15 @@ class PCTParser:
             #if classes[index].name==name:
                 #result = prefix+str(index)+suffix
                 #break
-        
+
         #return result
-    
+
     #def split_assignments_intial_only(index):
     #    assignment_operator_list = list()
     #    assignment_operator_list.append(" = ")
     #    return split_assignment_line(index, assignment_operator_list)
-    
-    
+
+
     #def split_assignment_line_any_assignment_method(index):
     #    assignment_operator_list = list()
     #    assignment_operator_list += self.comparison_operators + self.equality_operators + self.assignment_operators
