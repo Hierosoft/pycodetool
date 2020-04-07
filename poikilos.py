@@ -789,8 +789,8 @@ def get_initial_value_from_conf(path, name, assignment_operator="="):
         print("ERROR in get_initial_value_from_conf: path is None.")
     return result
 
-# region formerly pcttext.py
 
+# region formerly pcttext.py
 def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
                                 step=1, comment_delimiter="#"):
     result = -1
