@@ -1,5 +1,5 @@
 # PythonCodeTranslators
-Code conversion tools, mostly just for removing dependencies so far. 
+Code conversion tools, mostly just for removing dependencies so far.
 
 ## Features
 ### Python parsing
