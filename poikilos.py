@@ -790,7 +790,6 @@ def get_initial_value_from_conf(path, name, assignment_operator="="):
     return result
 
 
-# region formerly pcttext.py
 def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
                                 step=1, comment_delimiter="#"):
     result = -1
@@ -838,4 +837,3 @@ def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
             index += step
     return result
 
-# endregion formerly pcttext.py
