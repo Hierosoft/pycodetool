@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Execute common data processing operations.
+Parse data and manipulate variables.
 """
 # Copyright (C) 2018 Jake Gustafson
 
@@ -750,7 +750,7 @@ def find_dup(this_list, discard_whitespace_ignore_None_enable=True,
             if result > -1:
                 break
     else:
-        print("[ poikilos.py ] ERROR in has_dups: " + str(this_list)
+        print("[ parsing.py ] ERROR in has_dups: " + str(this_list)
               + " is not a list")
     return result
 
