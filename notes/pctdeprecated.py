@@ -1,12 +1,12 @@
     #merged with process_python_lines
     def framework_to_standard_python(self, outfile_path):
-        global is_mega_debug        
+        global is_mega_debug
         arraylist_name = None
         enumerator_loop_indent = None
         line_index = 0
         line_counting_number = 1
         outfile = open(outfile_path, 'w')
-        
+
         #post-process file:
         while line_index < len(self.lines):
             line_original = self.lines[line_index]
@@ -88,7 +88,7 @@
                     enumerable_name_suffix = ".GetEnumerator()"
                     enumerator_loop = "while enumerator.MoveNext():"
                     enumerator_current = " = enumerator.Current"
-                    
+
                     enumerator_current_index = find_unquoted_not_commented(line,enumerator_current)
                     if enumerator_current_index >= 0:
                         if enumerator_loop_indent is not None:
@@ -118,7 +118,7 @@
                         if enumerator_loop_indent is not None:
                             print("")
                             print("  script error on line "+str(line_counting_number)+": expected '"+enumerator_current+"' since '"+enumerator_loop+"' was on previous line and arraylist ("+arraylist_name+") was on line before that.")
-                            
+
 
                         enumerator_loop_index = find_unquoted_not_commented(line,enumerator_loop)
                         if enumerator_loop_index >= 0:
@@ -135,7 +135,7 @@
                             if arraylist_name is not None:
                                 print("")
                                 print("  script error on line "+str(line_counting_number)+": expected '"+enumerator_loop+"' since arraylist ("+arraylist_name+") was on previous line.")
-                                
+
 
                             enumerable_name_prefix_index = find_unquoted_not_commented(line,enumerable_name_prefix)
                             if enumerable_name_prefix_index >= 0:
@@ -149,10 +149,10 @@
                                 line = "#"+line
                             else:
                                 arraylist_name = None
-                    
+
             outfile.write(line+self.newline)
             line_index += 1
             line_counting_number += 1
-        
+
         outfile.close()
-    #end framework_to_standard_python
+    # end framework_to_standard_python

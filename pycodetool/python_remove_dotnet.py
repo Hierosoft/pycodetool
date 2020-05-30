@@ -1,6 +1,15 @@
+#!/usr/bin/env python
+"""
+usage:
+  python_remove_dotnet.py <source> <dest> [<output identifierlist>]
+
+example:
+  python_remove_dotnet.py fromCSharpRequiresDotNet.py \
+      fromCSharpStandardPython.py \"last run - identifiers.txt\""
+"""
+
 import sys
 import os
-
 import pct
 
 args = list()
@@ -25,10 +34,5 @@ else:
     print("")
     print("  ERROR: missing destination (nothing done)")
     print("")
-    print("  usage:")
-    print("    python_remove_dotnet.py <source> <dest> [<output identifierlist>]")
-    print("")
-    print("  example:")
-    print("    python_remove_dotnet.py fromCSharpRequiresDotNet.py fromCSharpStandardPython.py \"last run - identifiers.txt\"")
-    print("")
+    print(__doc__)
     print("")

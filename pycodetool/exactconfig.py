@@ -3,7 +3,7 @@
 Parse config files, preserving comments. Place the value after the
 example if the example is commented, for clarity.
 """
-# Copyright (C) 2018 Jake Gustafson
+# Copyright (C) 2020 Jake Gustafson
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -31,8 +31,8 @@ ec_non_value_types = ["example", "comment", "bad_syntax", "raw"]
 
 class ECLineInfo:
     def __init__(self, n, parent, t="string", v=None, i=None,
-            commented=False, before_ao="", after_ao="", after="",
-            cm=None):
+                 commented=False, before_ao="", after_ao="", after="",
+                 cm=None):
         """
         Sequential arguments:
         n -- set the name.
@@ -96,8 +96,8 @@ class ECLineInfo:
             if self._t == "raw":
                 if self._v is None:
                     raise RuntimeError("A raw line must have a value"
-                                        " even if it is \"\", but"
-                                        " self._v is None.")
+                                       " even if it is \"\", but"
+                                       " self._v is None.")
                 return self._v
             elif self._t == "comment":
                 cm = self._parent._cm
@@ -118,8 +118,8 @@ class ECLineInfo:
         if not self.is_value_type():
             if self._t == "comment":
                 raise RuntimeError("A comment had a value"
-                                    " (should have returned sooner"
-                                    " since _n should be None).")
+                                   " (should have returned sooner"
+                                   " since _n should be None).")
             elif self._t == "raw":
                 return self._v
             else:
@@ -184,7 +184,7 @@ class ExactConfig:
     """
 
     def __init__(self, path, assignment_operator="=", comment_mark="#",
-            fail_if_missing=False, serializeNoneAs=""):
+                 fail_if_missing=False, serializeNoneAs=""):
         self._null = serializeNoneAs
         self._cm = comment_mark
         self._lis = None

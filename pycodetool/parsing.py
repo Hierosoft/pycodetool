@@ -841,4 +841,3 @@ def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
             prev_char = this_char
             index += step
     return result
-

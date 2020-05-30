@@ -24,8 +24,8 @@ if not os.path.isfile(infile_path):
     if os.path.isfile(try_path):
         infile_path = try_path
 if os.path.isdir(try_dir):
-    outfile_path = os.path.join(try_dir,outfile_path)
-    id_outfile_path = os.path.join(try_dir,id_outfile_path)
+    outfile_path = os.path.join(try_dir, outfile_path)
+    id_outfile_path = os.path.join(try_dir, id_outfile_path)
 
 parser = pct.PCTParser(infile_path)
 print("* processing \"{}\"...".format(infile_path))
