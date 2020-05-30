@@ -65,6 +65,11 @@ class InstalledFile:
 
 
 class ConfigManager:
+    """
+    For ExactConfig (maintaining comments, checking comments to put
+    values near comments for them) see exactconfig in
+    github.com/poikilos/pycodetool
+    """
     # config_name = None
     _config_path = None
     _data = None
