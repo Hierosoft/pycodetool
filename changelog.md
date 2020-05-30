@@ -3,6 +3,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [git] - 2020-05-29
+### Changed
+- Move subcomponents into subfolders to prepare for setuptools.
+
+
+## [git] - 2020-05-29
+### Added
+- Add a special config parsing tool.
+
+
+## [git] - 2020-05-29
+### Changed
+- Move parsing.py into a folder to prepare for setuptools.
+
+
+## [git] - 2020-05-23
+### Changed
+- Rename poikilos.py to parsing.py
+
+
 ## [git] - 2020-04-07
 (Conform poikilos.py to the mtanalyze version.)
 ### Added
@@ -24,6 +44,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Use `deepcopy` to copy a dict.
 - Make use of `input` (formerly `raw_input`) and division compatible
   with Python 2 or 3.
+
 
 ## [git] - 2020-04-07
 ### Changed
