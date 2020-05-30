@@ -294,8 +294,8 @@ class PCTParser:
         self.unary_operators.append("+")
         self.unary_operators.append("-")
         self.operator_sets.append(self.unary_operators)
-        self.pre_arithmetic_operators = list() # // / * %  #in order of
-        #                                      # finding
+        self.pre_arithmetic_operators = list()  # // / * %  #in order of
+        #                                       # finding
         self.pre_arithmetic_operators.append("//")
         self.pre_arithmetic_operators.append("/")
         self.pre_arithmetic_operators.append("*")
