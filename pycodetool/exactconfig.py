@@ -22,11 +22,20 @@ example if the example is commented, for clarity.
 import os
 import shutil
 import re
+import sys
 # wsRx = re.compile(r'\s+')
 # \s+ means one or more whitespace
 
 ec_value_types = ["string"]
 ec_non_value_types = ["example", "comment", "bad_syntax", "raw"]
+
+def error(*args, **kwargs):
+    """
+    See MarkH's Feb 20 '13 answer edited Feb 17 '18 by Leon on
+    <https://stackoverflow.com/questions/5574702/
+    how-to-print-to-stderr-in-python>
+    """
+    print(*args, file=sys.stderr, **kwargs)
 
 
 class ECLineInfo:
@@ -158,10 +167,9 @@ class ECLineInfo:
             if force_type is not None:
                 self._t = force_type
             else:
-                print("[exactconfig ECLineInfo set_val] WARNING: from"
-                      " line {} was not a value type but a {}"
-                      "".format(self._i,
-                                self._t))
+                print("    [exactconfig ECLineInfo set_val] WARNING:"
+                      " line {} is not a value type but a {}: {}"
+                      "".format(self._i, self._t, self))
         self._v = v
 
 
@@ -210,9 +218,8 @@ class ExactConfig:
         Change values to ones from another exactconfig, or change them
         if missing.
         """
-        if self.verbose:
-            print("* overlaying \"{}\" onto \"{}\""
-                  "".format(exactconfig._path, self._path))
+        error("* overlaying \"{}\" onto \"{}\""
+              "".format(exactconfig._path, self._path))
         for li in exactconfig._lis:
             if li._t in ec_value_types:
                 self.set_var(li._n, li._v, no_save=True)
@@ -312,10 +319,10 @@ class ExactConfig:
                     else:
                         li = ECLineInfo(None, self, t="comment",
                                         before_ao=before_ao,
-                                        after=line, i=i, cm=cm)
-                    if self.verbose:
-                        print("  * line {} is a(n) {}"
-                              "".format(li._i+1, li._t))
+                                        after=line, i=i,
+                                        cm="")
+                    print("  *** line {} is a(n) {}: {}"
+                          "".format(li._i+1, li._t, li))
                 else:
                     li = ECLineInfo(None, self, t="comment", after=line,
                                     i=i)
@@ -388,20 +395,32 @@ class ExactConfig:
             else:
                 li._i = i + 1
                 if (self.verbose):
-                    print("  * inserting {} at line {} directly after"
-                          "    the commented example"
+                    print("  * inserting {} at line {}"
+                          " directly after the commented example"
                           "".format(n, li._i+1))
                 self._indexOf[n] = li._i
                 self._lis.insert(li._i, li)
+                for change_i in range(li._i + 1, len(self._lis)):
+                    self._lis[change_i]._i = change_i
+                for k, v in self._indexOf.items():
+                    if v >= li._i + 1:
+                        self._indexOf[k] += 1
             causes_save = True
+        elif li._t == "comment":
+            raise RuntimeError("The index is wrong. _i {} is a comment"
+                               "not a {} at {}: {}"
+                               "".format(li._i, type(v), i, li))
         else:
+            if (self.verbose):
+                print("  * setting {} at line {} over the old {}"
+                      " (causes_save: {})"
+                      "".format(n, li._i+1, li._t, causes_save))
+            if li._i != i:
+                raise RuntimeError("The index is wrong. _i is {} not {}"
+                                   "".format(li._i, i))
             if "{}".format(v) != "{}".format(li._v):
                 causes_save = True
             li.set_val(v)
-            if (self.verbose):
-                print("  * setting {} at line {} over the old value"
-                      " (causes_save: {})"
-                      "".format(n, li._i+1, causes_save))
         if causes_save:
             if no_save:
                 self._changed = True
