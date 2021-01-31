@@ -1,4 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+from __future__ import print_function
+from __future__ import division
+
 """
 Parse data and manipulate variables.
 """
@@ -19,7 +22,6 @@ Parse data and manipulate variables.
 # Foundation, Inc., 51 Franklin Street, Fifth Floor,
 # Boston, MA 02110-1301 USA
 
-from __future__ import division
 
 import os
 import sys
