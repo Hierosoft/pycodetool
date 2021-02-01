@@ -157,6 +157,9 @@ class ConfigManager:
             self._data[name] = val
             self.save_yaml()
 
+    def keys(self):
+        return self._data.keys()
+
     def get_var(self, name):
         result = None
         if name in self._data:
