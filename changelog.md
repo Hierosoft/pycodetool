@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+
+## [git] - 2021-02-01
+### Added
+- ts_equals for type-sensitive comparison
+
+### Changed
+- Use type-sensitive comparison in is_dict_subset
+
+
 ## [git] - 2020-05-29
 ### Changed
 - Move subcomponents into subfolders to prepare for setuptools.

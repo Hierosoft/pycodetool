@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 from __future__ import division
-
+me = "pycodetool.parsing"
 """
 Parse data and manipulate variables.
 """
@@ -177,11 +177,42 @@ def get_dict_deepcopy(old_dict):
         new_dict = {}
         for this_key in old_dict:
             new_dict[this_key] = copy.deepcopy(old_dict[this_key])
+    elif old_dict is None:
+        pass
+    else:
+        raise ValueError("old_dict is None.")
     return new_dict
+
+
+def ts_equals(v1, v2, tb=None):
+    '''
+    Type-sensitive equals: uses the proper comparison operator depending
+    on the type.
+
+    Keyword arguments:
+    tb -- traceback (any string that should show along with an error or
+          warning). If None, do not show warnings (warnings are when:
+          type differs).
+    '''
+    if type(v1) != type(v2):
+        if tb is not None:
+            if (v1 is not None) and (v2 is not None):
+                print("[ {} ts_equals ] WARNING: Types differ for {}."
+                      " v1 is {} and v2 is {}"
+                      "".format(me, tb, type(v1).__name__,
+                                type(v2).__name__))
+        return False
+    if type(v1).__name__ == "bool":
+        return v1 is v2
+    return v1 == v2
 
 
 def is_dict_subset(new_dict, old_dict, verbose_messages_enable,
                    verbose_dest_description="unknown file"):
+    '''
+    Is anything in new_dict not in (or different from) old_dict.
+    '''
+    tb = verbose_dest_description
     is_changed = False
     if old_dict is None:
         if new_dict is not None:
@@ -199,7 +230,8 @@ def is_dict_subset(new_dict, old_dict, verbose_messages_enable,
                       + "' since " + str(this_key)
                       + " not in saved version.")
             break
-        elif new_dict[this_key] != old_dict[this_key]:
+        elif not ts_equals(new_dict[this_key], old_dict[this_key],
+                           tb=this_key+" in is_dict_subset for "+tb):
             is_changed = True
             if verbose_messages_enable:
                 print("SAVING '" + verbose_dest_description
@@ -212,8 +244,8 @@ def is_dict_subset(new_dict, old_dict, verbose_messages_enable,
 def vec2_not_in(this_vec, this_list):
     result = False
     if this_list is not None and this_vec is not None:
-        for try_vec in this_list:
-            if try_vec[0] == this_vec[0] and try_vec[1] == this_vec[1]:
+        for tryV in this_list:
+            if (tryV[0] == this_vec[0]) and (tryV[1] == this_vec[1]):
                 result = True
                 break
     return result
