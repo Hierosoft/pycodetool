@@ -7,6 +7,9 @@ Code conversion tools, mostly just for removing dependencies so far.
   load).
 
 ### Python.NET to standard Python (framework_to_standard_python):
+Note that GUI conversion is not tested or supported, but you can try it
+the manually implement whatever is missing (or use IronPython as
+necessary and not use PythonCodeTranslators).
 
 #### STEP 1
 For now, you must use SharpDevelop 4.4.
