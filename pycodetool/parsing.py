@@ -55,6 +55,11 @@ identifier_and_dot_chars = identifier_chars+"."
 entries_modified_count = 0
 
 
+def set_verbose(on):
+    global verbose_enable
+    verbose_enable = on
+
+
 class InstalledFile:
     source_dir_path = None
     dest_dir_path = None
@@ -169,6 +174,75 @@ class ConfigManager:
     def save_yaml(self):
         save_conf_from_dict(self._config_path, self._data, self._ao,
                             save_nulls_enable=False)
+
+
+def toPythonLiteral(v):
+    '''
+    [copied to install_any.py in linux-preinstall by author]
+    '''
+    if v is None:
+        return None
+    elif v is False:
+        return "False"
+    elif v is True:
+        return "True"
+    elif ((type(v) == int) or (type(v) == float)):
+        return str(v)
+    elif (type(v) == tuple) or (type(v) == list):
+        enclosures = '()'
+        if type(v) == list:
+            enclosures = '[]'
+        s = enclosures[0]
+        for val in v:
+            s += toPythonLiteral(val) + ", "
+            # ^ Ending with an extra comma has no effect on length.
+        s += enclosures[1]
+        return s
+    return "'{}'".format(
+        v.replace("'", "\\'").replace("\r", "\\r").replace("\n", "\\n")
+    )
+
+
+def assertEqual(v1, v2, tbs=None):
+    '''
+    [copied to install_any.py in linux-preinstall by author]
+    Show the values if they differ before the assertion error stops the
+    program.
+
+    Keyword arguments:
+    tbs -- traceback string (either caller or some sort of message to
+           show to describe what data produced the arguments if they're
+           derived from something else)
+    '''
+    if ((v1 is True) or (v2 is True) or (v1 is False) or (v2 is False)
+            or (v1 is None) or (v2 is None)):
+        if v1 is not v2:
+            print("")
+            print("{} is not {}".format(toPythonLiteral(v1),
+                                        toPythonLiteral(v2)))
+            if tbs is not None:
+                print("for {}".format(tbs))
+        assert(v1 is v2)
+    else:
+        if v1 != v2:
+            print("")
+            print("{} != {}".format(toPythonLiteral(v1),
+                                    toPythonLiteral(v2)))
+            if tbs is not None:
+                print("while {}".format(tbs))
+        assert(v1 == v2)
+
+
+def assertAllEqual(list1, list2, tbs=None):
+    '''
+    [copied to install_any.py in linux-preinstall by author]
+    '''
+    if len(list1) != len(list2):
+        print("The lists are not the same length: list1={}"
+              " and list2={}".format(list1, list2))
+        assertEqual(len(list1), len(list2))
+    for i in range(len(list1)):
+        assertEqual(list1[i], list2[i], tbs=tbs)
 
 
 def get_dict_deepcopy(old_dict):
@@ -691,53 +765,6 @@ def explode_unquoted(haystack, delimiter):
     #   last comma, else beginning if none
     return elements
 
-
-# Finds needle in haystack where not quoted, taking into account escape
-#   sequence for single-quoted or double-quoted string inside haystack.
-def find_unquoted_even_commented(haystack, needle, start=0,
-                                 endbefore=-1, step=1):
-    result = -1
-
-    prev_char = None
-    if ((haystack is not None) and (needle is not None) and
-            (len(needle) > 0)):
-        in_quote = None
-        if endbefore > len(haystack):
-            endbefore = len(haystack)
-        if endbefore < 0:
-            endbefore = len(haystack)
-        index = start
-        if step < 0:
-            index = endbefore - 1
-        if verbose_enable:
-            print("    find_unquoted_not_commented in "
-                  + haystack.strip() + ":")
-        while ((step > 0 and index <= (endbefore-len(needle))) or
-               (step < 0 and (index >= 0))):
-            this_char = haystack[index:index+1]
-            if verbose_enable:
-                print("      {"
-                      + "index:" + str(index) + ";"
-                      + "this_char:" + str(this_char) + ";"
-                      + "in_quote:" + str(in_quote) + ";"
-                      + "}")
-            if in_quote is None:
-                if (this_char == '"') or (this_char == "'"):
-                    in_quote = this_char
-                elif haystack[index:index+len(needle)] == needle:
-                    result = index
-                    break
-            else:
-                if (this_char == in_quote) and (prev_char != "\\"):
-                    in_quote = None
-                elif haystack[index:index+len(needle)] == needle:
-                    result = index
-                    break
-            prev_char = this_char
-            index += step
-    return result
-
-
 def find_dup(this_list, discard_whitespace_ignore_None_enable=True,
              ignore_list=None, ignore_numbers_enable=False):
     result = -1
@@ -832,49 +859,379 @@ def get_initial_value_from_conf(path, name, assignment_operator="="):
     return result
 
 
-def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
-                                step=1, comment_delimiter="#"):
-    result = -1
+def find_which_needle(haystack, haystack_i, needles, subscript=None):
+    '''
+    Get the index in needles that exists at haystack[haystack_i:] or
+    -1 if no needles are there.
 
-    prev_char = None
+    Keyword arguments:
+    subscript -- if each needle is subscriptable, subscript it with
+                 subscript before using it. Otherwise (if None) each
+                 element of needle will be used directly as usual.
+                 Example: if needles is ["()", "{}"] then set
+                 subscript=0 to look for only "(" and "{".
+    '''
+    for i in range(len(needles)):
+        needle = needles[i]
+        if subscript is not None:
+            needle = needles[i][subscript]
+        if haystack[haystack_i:haystack_i+len(needle)] == needle:
+            return i
+    return -1
+
+quoted_slices_error = None
+
+
+def get_quoted_slices_error():
+    return quoted_slices_error
+
+
+def which_slice(v, ranges, length=None):
+    '''
+    Sequential arguments:
+    v -- Check for this index within each range
+    ranges -- A list of number pairs such as tuples [(start, stop),...]
+              where start is inclusive and stop is exclusive as per
+              Python slice and range notation.
+
+    Keyword arguments:
+    length -- If either of the values in any range is negative, you must
+              provide the length of the string to which the slices
+              refer (so that the real index can be calculated).
+              Otherwise this function will raise a ValueError.
+
+    returns:
+    The first index in ranges that has the range that contains v, or
+    -1 if v was not in any ranges.
+    '''
+    for range_i in range(len(ranges)):
+        r = ranges[range_i]
+        start = r[0]
+        stop = r[1]
+        if start < 0:
+            if length is not None:
+                start = length + start
+            else:
+                raise ValueError("negative slice notation isn't"
+                                 " implemented but a start index is"
+                                 " negative in {}".format(ranges))
+        if stop < 0:
+            if length is not None:
+                stop = length + stop
+            else:
+                raise ValueError("negative slice notation isn't"
+                                 " implemented but a stop index is"
+                                 " negative in {}".format(ranges))
+        if (v >= r[0]) and (v < r[1]):
+            return range_i
+    return -1
+
+
+def in_any_slice(i, ranges):
+    return which_slice(i, ranges) > -1
+
+
+END_BEFORE_QUOTE_ERR = "string ended before quote ended"
+
+def quoted_slices(haystack, start=0, endbefore=None,
+                  comment_delimiter="#"):
+    '''
+    Get a list of tuples where each tuple is the start and stop values
+    for quoted portions of haystack. The first entry of the tuple is
+    the first quotation mark (`"` or `'`) and the second entry of
+    the tuple is 1 after the ending quote's index (as per slice
+    notation).
+
+    Keyword arguments:
+    comment_delimiter -- Set a comment delimiter of any length to
+                         prevent detections at or after the character.
+                         Any comment_delimiter before the start is
+                         ignored.
+    '''
+    global quoted_slices_error
+    quoted_slices_error = None
+    results = []
+    open_i = None
+    i = start
+    quotes = "\"'"
+    if haystack is None:
+        raise ValueError("haystack is None")
+    if endbefore is None:
+        endbefore = len(haystack)
+    elif endbefore < 0:
+        new_endbefore = len(haystack) + endbefore
+        # ^ + since already negative
+        if verbose_enable:
+            print("INFO: endbefore was negative so it will"
+                  " change to len(haystack)+offset (endbefore={},"
+                  " new_endbefore={})."
+                  "".format(endbefore, new_endbefore))
+        endbefore = new_endbefore
+    if endbefore < start:
+        raise ValueError("endbefore is < start which should never be"
+                         " the case (endbefore={})"
+                         "".format(endbefore))
+    i -= 1
+    open_i = None
+    prev_c = None
+    while i+1 < endbefore:
+        i += 1
+        if verbose_enable:
+            print("(i={}, open_i={},".format(i, open_i))
+        c = haystack[i]
+        if verbose_enable:
+            print(" c={})".format(c))
+        if open_i is None:
+            if c in quotes:
+                open_i = i
+            elif (haystack[i:i+len(comment_delimiter)]
+                    == comment_delimiter):
+                break
+        elif (c == haystack[open_i]) and (prev_c != "\\"):
+            results.append((open_i, i+1))
+            # ^ first quote & 1 after end quote as per slice notation
+            #   (including both quotes)
+            open_i = None
+        prev_c = c
+    if open_i is not None:
+        quoted_slices_error = END_BEFORE_QUOTE_ERR
+        print("WARNING: The following line ended at {} before the quote"
+              " at column {} ended (endbefore={}):`{}`"
+              "".format(i, open_i+1, endbefore, haystack))
+    return results
+
+
+def find_in_code(haystack, needle, start=0, endbefore=None,
+                   step=1, comment_delimiter="#",
+                   enclosures=None, allow_quoted=True,
+                   allow_commented=False):
+    '''
+    Keyword arguments:
+    start -- where to start (if step is negative go from endbefore-1 to
+             start, otherwise go from start to endbefore-1)
+    endbefore -- Do not check at or after this value. If negative, start
+                 from len(haystack)+endbefore which will add a negative
+                 and subtract from length to obtain the first index to
+                 check. If step is negative start from endbefore-1. That
+                 is why this variable is not called "stop" and is not
+                 like "stop" in builtin Python functions.
+    enclosures -- Provide a list of strings, each 2 long, where the
+                  first character is an opener and the next character
+                  is a closer. If not None, only find in areas that are
+                  neither commented nor enclosed. Example:
+                  ["()", "[]"]
+    allow_quoted -- allow even if within quotes (single or double)
+    step -- Move in this direction, normally 1 or -1. If negative,
+            go from endbefore-1 to start and check for comment marks
+            beforehand (therefore negative step doubles the processing
+            time on average).
+    '''
+    result = -1
+    closers = {}
+    comment_i = -1
+    if step == 0:
+        raise ValueError("step is 0")
+    if endbefore > len(haystack):
+        print("WARNING: endbefore was too big so it will change to"
+              " len(haystack) (endbefore={}, len(haystack)={})."
+              "".format(endbefore, len(haystack)))
+        endbefore = len(haystack)
+    if endbefore is None:
+        endbefore = len(haystack)
+    elif endbefore < 0:
+        new_endbefore = len(haystack) + endbefore
+        # ^ + since already negative
+        if verbose_enable:
+            print("INFO: endbefore was negative so it will"
+                  " change to len(haystack)+offset (endbefore={},"
+                  " new_endbefore={})."
+                  "".format(endbefore, new_endbefore))
+        endbefore = new_endbefore
+    if len(haystack) == 0:
+        # ^ prevents dubious meaning in ValueError below
+        pass
+        # print("WARNING: haystack length is 0")
+        # raise ValueError("haystack length is 0")
+        return -1
+    elif endbefore < start:
+        raise ValueError("endbefore is < start which should never be"
+                         " the case even if the step is negative"
+                         " because in that case the loop iterates from"
+                         " endbefore-1 (start={}, endbefore={},"
+                         " step={})"
+                         "".format(start, endbefore, step))
+    q_slices = None
+    if (step < 0) and (not allow_quoted):
+        q_slices = quoted_slices(haystack, start=start,
+                                 endbefore=endbefore)
+    if (step < 0) and (not allow_commented):
+        comment_i = find_in_code(haystack, comment_delimiter,
+                                 start=0,
+                                 # endbefore=endbefore
+                                 # ^ never end early to find comment!
+                                 step=1, # forward to find comment!
+                                 enclosures=None, # ignore for comment
+                                 allow_quoted=False, # False for comment
+                                 comment_delimiter=None,
+                                 # ^ None since it is the needle now
+                                 allow_commented=False)
+        if comment_i >= 0:
+            if comment_i < endbefore:
+                if verbose_enable:
+                    print("[find_in_code] endbefore will become"
+                          " comment_i since the comment is before the"
+                          " end (endbefore={}, comment_i={})."
+                          "".format(endbefore, comment_i))
+                endbefore = comment_i
+
+    if enclosures is not None:
+        for pair in enclosures:
+            if len(pair) != 2:
+                raise ValueError("All sets of enclosures must be 2-long"
+                                 " but the enclosures are: {}"
+                                 "".format(enclosures))
+            if len(pair[0]) != 1:
+                raise ValueError("All openers must be 1-long"
+                                 " but the enclosures are: {}"
+                                 "".format(enclosures))
+            if len(pair[1]) != 1:
+                raise ValueError("All closers must be 1-long"
+                                 " but the enclosures are: {}"
+                                 "".format(enclosures))
+            closers[pair[0]] = pair[1]
+    opener_stack = []
+    # prev_char = None  # in case step doesn't matter
+    left_char = None  # in case step is negative
+    # ^ also used in find_unquoted_even_commented
     if ((haystack is not None) and
             (needle is not None) and
             (len(needle) > 0)):
         in_quote = None
-        if endbefore > len(haystack):
-            endbefore = len(haystack)
-        if endbefore < 0:
-            endbefore = len(haystack)
+        opener_stack = []
         index = start
         if step < 0:
             index = endbefore - 1
         if verbose_enable:
-            print("    find_unquoted_not_commented in "
+            print("    find_in_code in "
                   + haystack.strip() + ":")
         while ((step > 0 and index <= (endbefore-len(needle))) or
-               (step < 0 and (index >= 0))):
+               (step < 0 and (index >= start))):
             this_char = haystack[index:index+1]
+            left_char = None
+            if index - 1 >= 0:
+                left_char = haystack[index-1:index]
             if verbose_enable:
                 print("      {"
-                      + "index:" + str(index) + ";"
-                      + "this_char:" + str(this_char) + ";"
-                      + "in_quote:" + str(in_quote) + ";"
-                      + "}")
+                      "index:" + str(index) + ";"
+                      "this_char:" + str(this_char) + ";"
+                      "in_quote:" + str(in_quote) + ";"
+                      "opener_stack:" + str(opener_stack) + ";"
+                      "}")
             if in_quote is None:
-                if (this_char == comment_delimiter) or \
-                        (haystack[index:index+3] == "\"\"\""):
+                needle_i = -1
+                if enclosures is not None:
+                    needle_i = find_which_needle(haystack, index,
+                                                 needles=enclosures,
+                                                 subscript=0)
+                is_closing = False
+                if len(opener_stack) > 0:
+                    closer = closers[opener_stack[-1]]
+                    if haystack[index:index+len(closer)] == closer:
+                        is_closing = True
+                if ((not allow_commented)
+                        and ((this_char == comment_delimiter)
+                             or (haystack[index:index+3] == '"""')
+                             or (haystack[index:index+3] == "'''"))
+                    ):
+                    # TODO: handle multi-line comments?
                     break
                 elif (this_char == '"') or (this_char == "'"):
+                    # ^ Don't check for escape characters when not
+                    #   in quotes yet!
                     in_quote = this_char
+                elif len(opener_stack) > 0:
+                    if is_closing:
+                        opener_stack = opener_stack[:-1]
+                    elif needle_i > -1:
+                        # start a nested parenthetical
+                        opener_stack.append(this_char)
+                elif needle_i > -1:
+                    # start a non-nested parenthetical
+                    opener_stack.append(this_char)
                 elif haystack[index:index+len(needle)] == needle:
+                    # ^ This should only happen when
+                    #   len(opener_stack) == 0 (it is, since > 0 was
+                    #   handled in a prior case.
                     result = index
                     break
             else:
-                if (this_char == in_quote) and (prev_char != "\\"):
+                if (this_char == in_quote) and (left_char != "\\"):
                     in_quote = None
                 elif haystack[index:index+len(needle)] == needle:
-                    result = index
-                    break
-            prev_char = this_char
+                    if allow_quoted:
+                        result = index
+                        break
+            # prev_char = this_char
             index += step
     return result
+
+
+def find_unquoted_not_commented_not_parenthetical(haystack, needle,
+    start=0, endbefore=-1, step=1, comment_delimiter="#"):
+    '''
+    This function was lost and not found in a previous commit, and may
+    have never been created after used. Therefore, 2021-03-13 it was
+    re-implemented by calling find_unquoted_not_commented with a new
+    enclosures parameter with the value ["()"].
+    See find_in_code.
+    '''
+    return find_in_code(
+        haystack,
+        needle,
+        start=start,
+        endbefore=endbefore,
+        step=step,
+        comment_delimiter=comment_delimiter,
+        enclosures=["()"],
+        allow_quoted=False,
+    )
+
+
+def find_unquoted_not_commented(haystack, needle,
+    start=0, endbefore=-1, step=1, comment_delimiter="#"):
+    '''
+    This function was lost and not found in a previous commit, and may
+    have never been created after used. Therefore, 2021-03-13 it was
+    re-implemented by calling find_unquoted_not_commented with a new
+    enclosures parameter with the value ["()"].
+    See find_in_code.
+    '''
+    return find_in_code(
+        haystack,
+        needle,
+        start=start,
+        endbefore=endbefore,
+        step=step,
+        comment_delimiter=comment_delimiter,
+        allow_quoted=False,
+    )
+
+def find_unquoted_even_commented(haystack, needle,
+    start=0, endbefore=-1, step=1, comment_delimiter="#"):
+    '''
+    This function was lost and not found in a previous commit, and may
+    have never been created after used. Therefore, 2021-03-13 it was
+    re-implemented by calling find_unquoted_not_commented with a new
+    enclosures parameter with the value ["()"].
+    See find_in_code.
+    '''
+    return find_in_code(
+        haystack,
+        needle,
+        start=start,
+        endbefore=endbefore,
+        step=step,
+        comment_delimiter=comment_delimiter,
+        allow_quoted=False,
+        allow_commented=True,
+    )

@@ -11,11 +11,17 @@ License: GPL 2 or later
 import os
 # import datetime
 import time
-from parsing import find_unquoted_not_commented
-from parsing import find_unquoted_MAY_BE_COMMENTED
-from parsing import find_any_not
-from parsing import find_identifier
-from parsing import find_unquoted_not_commented_not_parenthetical
+from parsing import (
+    find_unquoted_not_commented,
+    find_unquoted_even_commented,
+    find_any_not,
+    find_identifier,
+    find_unquoted_not_commented_not_parenthetical,
+    identifier_chars,
+    is_identifier_valid,
+    digit_chars,
+    explode_unquoted,
+)
 # import re  # re.escape
 # ^ why doesn't it work (printing result shows backslash then actually
 # ends the line)
@@ -455,7 +461,7 @@ class PCTParser:
                 while line_index < len(self.lines):
                     line = self.lines[line_index]
                     line_strip = line.strip()
-                    line_comment_index = find_unquoted_MAY_BE_COMMENTED(
+                    line_comment_index = find_unquoted_even_commented(
                         line,
                         "#"
                     )
@@ -691,7 +697,7 @@ class PCTParser:
                                 self.pserr("line "+str(lineN)+": (source ERROR "+participle+") expected  '"+class_ender+"' after '"+class_opener+"' and classname")
                         else:
                             # region actual processing of lines that are neither def nor class nor comment (put framework removal in parser_op_remove_net_framework case further down)
-                            ici = find_unquoted_MAY_BE_COMMENTED(line, "#")
+                            ici = find_unquoted_even_commented(line, "#")
                             nonspace_index = find_any_not(line, " \t")
                             if parser_op == self.parser_op_preprocess:
                                 if (line_strip == "except , :"):
@@ -1438,6 +1444,7 @@ class PCTParser:
                  operator.
         lineN -- Set the line number of the operation (starting at 1).
         """
+        fUNC = find_unquoted_not_commented
         result = None
         rparm = rparm.strip()
         sign = None
@@ -1513,7 +1520,10 @@ class PCTParser:
         class_name = None
         method_name = fully_qualified_name
         dot_index = fully_qualified_name.find(".")
-        fqn = this_object.get_fully_qualified_name()
+        # fqn = this_object.get_fully_qualified_name()
+        # TODO: ^ ensure that misplaced line wasn't necessary in the
+        # calling method
+        fqn = fully_qualified_name
         if dot_index > 0:
             class_name = fully_qualified_name[0:dot_index]
             method_name = fully_qualified_name[dot_index+1:]
@@ -1564,8 +1574,7 @@ class PCTParser:
             line_original = self.lines[line_index]
             line = line_original
             line_strip = line.strip()
-            line_comment_index = find_unquoted_MAY_BE_COMMENTED(line,
-                                                                "#")
+            line_comment_index = find_unquoted_even_commented(line, "#")
             line_nocomment = line
             if line_comment_index > -1:
                 line_nocomment = line[:line_comment_index]

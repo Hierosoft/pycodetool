@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
+## [git] - 2021-03-13
+### Added
+- more tests
+- `toPythonLiteral` and `assert*` helper functions (They are originally
+  from `install_any.py`, but I'm the author so license-wise it is added
+  as if a regular commit).
+
+### Changed
+- Move the test data to tests/data/ and adjust tests.py to match that.
+- Roll functionality from `find_unquoted_even_commented` and
+  `find_unquoted_not_commented` into a new `find_in_code` function.
+
+### Fixed
+- Add the lost or never-created
+  `find_unquoted_not_commented_not_parenthetical` function.
+- Add `__init__.py` so that the pycodetool subdirectory is a module.
+- Use correct pathing for imports.
+- Use correct pathing for tests.
+- Check for `'''` not only `"""`.
+- If step is negative, the last iteration should be start not 0.
+
+
 ## [git] - 2021-02-01
 ### Added
 - ts_equals for type-sensitive comparison
