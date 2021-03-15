@@ -632,8 +632,8 @@ class PCTParser:
                                     else:
                                         method_fqname = method_name
                                         if (class_name is not None):
-                                            fqname = class_name+"."+method_name
-                                        method_number = self.get_function_number_using_dot_notation(fqname)
+                                            method_fqname = class_name+"."+method_name
+                                        method_number = self.get_function_number_using_dot_notation(method_fqname)
                                         if method_number < 0:
                                             self.pperr("line "+str(lineN)+": (parsing error "+participle+") no method number found for method named '"+fqname+"' (was not preprocessed correctly)")
                                         # TODO: add functions to
