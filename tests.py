@@ -2,6 +2,9 @@ import os
 import platform
 
 from pycodetool import pct
+from pycodetool.cc0code import (
+    optionalD
+)
 
 from pycodetool.parsing import (
     assertEqual,
@@ -209,6 +212,13 @@ w_slice = which_slice(6, goodIs)
 assertEqual(w_slice, -1)
 a_slice = in_any_slice(6, goodIs)
 assertEqual(a_slice, False)
+
+
+assertEqual(optionalD(11.123456, 5).format(11.123456), '11.12346')
+assertEqual(optionalD(11.12345, 5).format(11.12345), '11.12345')
+assertEqual(optionalD(11.1234, 5).format(11.1234), '11.1234')
+assertEqual(optionalD(11, 5).format(11), '11')
+
 
 
 infile_path = None

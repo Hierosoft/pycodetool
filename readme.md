@@ -1,6 +1,7 @@
 # PythonCodeTranslators
 Code conversion tools, mostly just for removing dependencies so far.
 
+
 ## Features
 ### Python parsing
 * Export a list of all global identifiers (after pre-processing on
@@ -25,8 +26,16 @@ See also C# to Haxe converters:
 
 (Haxe can now [output Python](https://haxe.org/manual/target-python-getting-started.html))
 
-See also C# to Python Converters:
-- <https://github.com/isukces/cs2python> converts C# Numpy code properly (to Python Numpy)
+See also C# to Python converters:
+- <https://github.com/isukces/cs2python>: Convert C# numpy code to Python numpy code properly.
+- <https://github.com/shannoncruey/csharp-to-python>: Convert aspx properly (syntax only).
+  - Manual changes are necessary afterward. See csharp-to-python.md
+
+Discussions about C# to Python conversion:
+- <https://www.codeproject.com/Questions/1243096/I-wanted-to-convert-Csharp-code-into-Python-code>
+
+Non-working:
+- <http://www.developerfusion.com/tools/convert/csharp-to-python/>
 
 #### STEP 2
 This step (and this project) is only necessary if you have some sort of IronPython code such as created using SharpDevelop or
