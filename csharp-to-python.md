@@ -113,7 +113,7 @@ if __name__ == "__main__":
 ```
 - `char.IsWhiteSpace(i, 1)` should be
   ```
-def IsSpace(*args):
+def IsWhiteSpace(*args):
     '''
     Sequential arguments:
     1st (args[0]) -- String to check as a whole or as a character
@@ -125,9 +125,9 @@ def IsSpace(*args):
         return str.isspace(args[0])
     elif len(args) == 2:
         return str.isspace(args[0][args[1]])
-    raise ValueError("IsSpace only takes (charStr)"
+    raise ValueError("IsWhiteSpace only takes (charStr)"
                      " or (str, index)")
-IsSpace(i, 1)
+IsWhiteSpace(i, 1)
 ```
 - `true` should be `True`
 - `false` should be `False`
