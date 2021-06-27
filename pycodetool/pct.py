@@ -456,7 +456,8 @@ class PCTParser:
                 is_sys_imported = False
                 is_convert_note_prepended = False
                 convert_note_dated = (
-                    convert_note + time.strftime("%Y-%m-%d %H:%M:%S")
+                    convert_note + " "
+                    + time.strftime("%Y-%m-%d %H:%M:%S")
                 )
                 while line_index < len(self.lines):
                     line = self.lines[line_index]
