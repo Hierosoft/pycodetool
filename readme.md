@@ -38,10 +38,10 @@ Non-working:
 - <http://www.developerfusion.com/tools/convert/csharp-to-python/>
 
 #### STEP 2
-This step (and this project) is only necessary if you have some sort of IronPython code such as created using SharpDevelop or
+This step (and this project) is only necessary if you have some sort of IronPython code (such as created using SharpDevelop's C# to Python converter).
 
-python_remove_dotnet.py removes non-standard Python from icsharpcode output as follows:
-* Eliminates various issues and .NET calls such as introduced by icsharpcode snippet converter C# to Python translation
+`python_remove_dotnet.py` removes non-standard Python as follows:
+* Eliminates various issues and .NET calls such as introduced by SharpDevelop's C# to Python translation (formerly available in icsharpcode snippet converter)
 * Removes "from System" imports
 * Removes "Exception" and uses traceback instead of an exception object
 * Changes "Substring" to slice notation (converts count to end)
