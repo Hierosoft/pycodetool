@@ -11,7 +11,7 @@ License: GPL 2 or later
 import os
 # import datetime
 import time
-from parsing import (
+from pycodetool.parsing import (
     find_unquoted_not_commented,
     find_unquoted_even_commented,
     find_any_not,

@@ -205,9 +205,9 @@ def toPythonLiteral(v):
 
 def assertEqual(v1, v2, tbs=None):
     '''
-    [copied to install_any.py in linux-preinstall by author]
     Show the values if they differ before the assertion error stops the
-    program.
+    program. If your test class derives from unittest.TestCase,
+    use the self.assertEqual from super instead of this.
 
     Keyword arguments:
     tbs -- traceback string (either caller or some sort of message to
@@ -235,7 +235,7 @@ def assertEqual(v1, v2, tbs=None):
 
 def assertAllEqual(list1, list2, tbs=None):
     '''
-    [copied to install_any.py in linux-preinstall by author]
+    Assert that each element matches.
     '''
     if len(list1) != len(list2):
         print("The lists are not the same length: list1={}"
@@ -1031,6 +1031,8 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
     comment_i = -1
     if step == 0:
         raise ValueError("step is 0")
+    if endbefore is None:
+        endbefore = len(haystack)
     if endbefore > len(haystack):
         print("WARNING: endbefore was too big so it will change to"
               " len(haystack) (endbefore={}, len(haystack)={})."

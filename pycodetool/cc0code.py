@@ -51,7 +51,7 @@ def IsNullOrWhiteSpace(s):
     return str.isspace(s)
 
 
-def optionalD(n, want_decimals, mode="format", name="")
+def optionalD(n, want_decimals, mode="format", name=""):
     '''
     Mimic C#'s ".##" format where "##" is any number of "#"s. The dot
     and places aren't displayed at all if they aren't present.
