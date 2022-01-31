@@ -3,7 +3,7 @@ import platform
 
 from pycodetool import pct
 from pycodetool.cc0code import (
-    optionalD
+    optionalD,
 )
 
 from pycodetool.parsing import (
@@ -46,7 +46,8 @@ ba = os.path.join(profile, "Documents", "GitHub", "blockability")
 if not os.path.isdir(ba):
     ba = os.path.join(profile, "git", "blockability")
 
-test_data_dir = os.path.join("tests", "data")
+# test_data_dir = os.path.join("tests", "data")
+test_data_dir = os.path.join("pycodetool", "tests", "data")
 try_dirs.append(test_data_dir)
 test_data_dir_i = len(try_dirs) - 1
 
