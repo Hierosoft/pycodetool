@@ -65,3 +65,9 @@ See changelog.md.
 ## Known Issues
 See also https://github.com/poikilos/PythonCodeTranslators/issues
 * (wontfix) (This is not possible to fix) Correct icsharpcode snippet converter issue where even public member variables have underscore prefix (which denotes private in python)
+
+
+## Developer Notes
+
+### Testing
+Use nose such as via `python3 -m nose` in the repo directory (requires the nose package such as via `python3 -m pip install --user nose`).
