@@ -206,8 +206,11 @@ def toPythonLiteral(v):
 def assertEqual(v1, v2, tbs=None):
     '''
     Show the values if they differ before the assertion error stops the
-    program. If your test class derives from unittest.TestCase,
+    program. If your test case inherits unittest.TestCase,
     use the self.assertEqual from super instead of this.
+
+    Unit tests in this module use this special assertEqual since it
+    accepts an extra argument below.
 
     Keyword arguments:
     tbs -- traceback string (either caller or some sort of message to
@@ -235,7 +238,10 @@ def assertEqual(v1, v2, tbs=None):
 
 def assertAllEqual(list1, list2, tbs=None):
     '''
-    Assert that each element matches.
+    Assert that each element matches. If your test case inherits
+    unittest.TestCase, don't use this. Instead, write your own
+    assertAllEqual similar to this in your class but call
+    self.assertEqual instead of assertEqual.
     '''
     if len(list1) != len(list2):
         print("The lists are not the same length: list1={}"
