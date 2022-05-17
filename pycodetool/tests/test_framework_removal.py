@@ -29,7 +29,8 @@ if platform.system() == "Windows":
     if profile is None:
         prerr("ERROR: You must set USERPROFILE in Windows.")
         exit(1)
-    AppDatas = os.path.join(profile, "AppData", "Roaming")
+    # AppDatas = os.path.join(profile, "AppData", "Roaming")
+    AppDatas = os.environ['APPDATA']
 else:
     profile = os.environ.get("HOME")
     if profile is None:
