@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-from __future__ import print_function
-from __future__ import division
-me = "pycodetool.parsing"
 """
 Parse data and manipulate variables.
 """
+from __future__ import print_function
+from __future__ import division
+me = "pycodetool.parsing"
 # Copyright (C) 2018-2022 Jake Gustafson
 
 # This library is free software; you can redistribute it and/or
@@ -1060,9 +1060,9 @@ def quoted_slices(haystack, start=0, endbefore=None,
 
 
 def find_in_code(haystack, needle, start=0, endbefore=None,
-                   step=1, comment_delimiter="#",
-                   enclosures=None, allow_quoted=True,
-                   allow_commented=False):
+                 step=1, comment_delimiter="#",
+                 enclosures=None, allow_quoted=True,
+                 allow_commented=False):
     '''
     Keyword arguments:
     start -- where to start (if step is negative go from endbefore-1 to
@@ -1232,7 +1232,7 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
 
 
 def find_unquoted_not_commented_not_parenthetical(haystack, needle,
-    start=0, endbefore=-1, step=1, comment_delimiter="#"):
+        start=0, endbefore=-1, step=1, comment_delimiter="#"):
     '''
     This function was lost and not found in a previous commit, and may
     have never been created after used. Therefore, 2021-03-13 it was
@@ -1253,7 +1253,7 @@ def find_unquoted_not_commented_not_parenthetical(haystack, needle,
 
 
 def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
-                                step=1, comment_delimiter="#"):
+        step=1, comment_delimiter="#"):
     '''
     This function was lost and not found in a previous commit, and may
     have never been created after used. Therefore, 2021-03-13 it was
@@ -1271,8 +1271,8 @@ def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
         allow_quoted=False,
     )
 
-def find_unquoted_even_commented(haystack, needle,
-    start=0, endbefore=-1, step=1, comment_delimiter="#"):
+def find_unquoted_even_commented(haystack, needle, start=0,
+        endbefore=-1, step=1, comment_delimiter="#"):
     '''
     This function was lost and not found in a previous commit, and may
     have never been created after used. Therefore, 2021-03-13 it was
