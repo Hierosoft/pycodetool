@@ -29,13 +29,11 @@ import sys
 ec_value_types = ["string"]
 ec_non_value_types = ["example", "comment", "bad_syntax", "raw"]
 
-def error(*args, **kwargs):
-    """
-    See MarkH's Feb 20 '13 answer edited Feb 17 '18 by Leon on
-    <https://stackoverflow.com/questions/5574702/
-    how-to-print-to-stderr-in-python>
-    """
-    print(*args, file=sys.stderr, **kwargs)
+from pycodetool import (
+    echo0,
+    echo1,
+    echo2,
+)
 
 
 class ECLineInfo:
@@ -156,12 +154,11 @@ class ECLineInfo:
         """
         Keyword arguments:
         force_type -- Change to this type always (and suppress the
-                      "not a value type" warning). The value must be
-                      a string from this module's ec_value_types list
-                      (or ec_non_value_types list but not usually--
-                      to set a comment, set ._after instead). Generally
-                      don't use this unless you want to place the
-                      default value after it as a comment.
+            "not a value type" warning). The value must be a string
+            from this module's ec_value_types list (or
+            ec_non_value_types list but not usually-- to set a comment,
+            set ._after instead). Generally don't use this unless you
+            want to place the default value after it as a comment.
         """
         if not self.is_value_type():
             if force_type is not None:
@@ -178,17 +175,18 @@ class ExactConfig:
     This is a special config manager that finds the comments to decide
     where to put the settings, and preserves the comments.
 
-    _lis is a list of line info objects in the same order of the file
-    (add one to get the line number)
-
-    _indexOf is a dict of indices where the key is the variable name and
-    the value is an index of _lis. An error will appear if the variable
-    appears twice in the file during loading. The corresponding
-    ECLineInfo object in the _lis list will have the type
-    "default_comment" if the line is something like "# name = value",
-    but will not if there is a later line in the file that actually
-    sets the variable of that name (in that case the corresponding
-    entry will be a real variable such as type string (._t=="string").
+    Properties:
+    _lis -- a list of line info objects (ECLineInfo objects) in the same
+        order of the file (add one to the index to get the line number)
+    _indexOf -- a dict of indices where the key is the variable name and
+        the value is an index of _lis. An error will appear if the
+        variable appears twice in the file during loading. The
+        corresponding ECLineInfo object in the _lis list will have the
+        type "default_comment" if the line is something like "# name =
+        value", but will not if there is a later line in the file that
+        actually sets the variable of that name (in that case the
+        corresponding entry will be a real variable such as type string
+        (._t=="string").
     """
 
     def __init__(self, path, assignment_operator="=", comment_mark="#",
@@ -218,7 +216,7 @@ class ExactConfig:
         Change values to ones from another exactconfig, or change them
         if missing.
         """
-        error("* overlaying \"{}\" onto \"{}\""
+        echo0("* overlaying \"{}\" onto \"{}\""
               "".format(exactconfig._path, self._path))
         for li in exactconfig._lis:
             if li._t in ec_value_types:

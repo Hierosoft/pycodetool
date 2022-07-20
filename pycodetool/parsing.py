@@ -5,7 +5,7 @@ me = "pycodetool.parsing"
 """
 Parse data and manipulate variables.
 """
-# Copyright (C) 2018 Jake Gustafson
+# Copyright (C) 2018-2022 Jake Gustafson
 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -27,12 +27,18 @@ import os
 import sys
 import traceback
 import copy
+
+from pycodetool import (
+    echo0,
+    echo1,
+    echo2,
+)
+
 try:
     input = raw_input
 except NameError:
     pass
 
-verbose_enable = False
 # os_name is deprecated--use: import platform, then
 # if "windows" in platform.system().lower(): do windows things
 
@@ -53,11 +59,6 @@ alnum_chars = alpha_chars+digit_chars
 identifier_chars = alnum_chars+"_"
 identifier_and_dot_chars = identifier_chars+"."
 entries_modified_count = 0
-
-
-def set_verbose(on):
-    global verbose_enable
-    verbose_enable = on
 
 
 class InstalledFile:
@@ -102,9 +103,9 @@ class ConfigManager:
         """
         is_changed = False
         if name not in self._data:
-            print("")
+            echo2("")
             if default_value is None:
-                print("WARNING: this program does not have a"
+                echo0("WARNING: this program does not have a"
                       + " default value for "+name+".")
                 default_value = ""
             if interactive_enable:
@@ -120,12 +121,12 @@ class ConfigManager:
                 self._data[name] = answer
             else:
                 self._data[name] = default_value
-            print("Using " + name + " '" + self._data[name] + "'")
+            echo1("Using " + name + " '" + self._data[name] + "'")
             is_changed = True
 
         if not os.path.isfile(self._config_path):
             is_changed = True
-            print("Creating '"+self._config_path+"'")
+            echo1("Creating '"+self._config_path+"'")
         if is_changed:
             self.save_yaml()
 
@@ -152,7 +153,7 @@ class ConfigManager:
         """DOES autosave IF different val"""
         is_changed = False
         if name not in self._data.keys():
-            print("[ ConfigManager ] WARNING to developer: run"
+            echo0("[ ConfigManager ] WARNING to developer: run"
                   " prepare_var before set_val, so that variable has a"
                   " default.")
             is_changed = True
@@ -220,19 +221,19 @@ def assertEqual(v1, v2, tbs=None):
     if ((v1 is True) or (v2 is True) or (v1 is False) or (v2 is False)
             or (v1 is None) or (v2 is None)):
         if v1 is not v2:
-            print("")
-            print("{} is not {}".format(toPythonLiteral(v1),
+            echo0("")
+            echo0("{} is not {}".format(toPythonLiteral(v1),
                                         toPythonLiteral(v2)))
             if tbs is not None:
-                print("for {}".format(tbs))
+                echo0("for {}".format(tbs))
         assert(v1 is v2)
     else:
         if v1 != v2:
-            print("")
-            print("{} != {}".format(toPythonLiteral(v1),
+            echo0("")
+            echo0("{} != {}".format(toPythonLiteral(v1),
                                     toPythonLiteral(v2)))
             if tbs is not None:
-                print("while {}".format(tbs))
+                echo0("while {}".format(tbs))
         assert(v1 == v2)
 
 
@@ -244,7 +245,7 @@ def assertAllEqual(list1, list2, tbs=None):
     self.assertEqual instead of assertEqual.
     '''
     if len(list1) != len(list2):
-        print("The lists are not the same length: list1={}"
+        echo0("The lists are not the same length: list1={}"
               " and list2={}".format(list1, list2))
         assertEqual(len(list1), len(list2))
     for i in range(len(list1)):
@@ -258,9 +259,7 @@ def get_dict_deepcopy(old_dict):
         for this_key in old_dict:
             new_dict[this_key] = copy.deepcopy(old_dict[this_key])
     elif old_dict is None:
-        pass
-    else:
-        raise ValueError("old_dict is None.")
+        return None
     return new_dict
 
 
@@ -277,7 +276,7 @@ def ts_equals(v1, v2, tb=None):
     if type(v1) != type(v2):
         if tb is not None:
             if (v1 is not None) and (v2 is not None):
-                print("[ {} ts_equals ] WARNING: Types differ for {}."
+                echo0("[ {} ts_equals ] WARNING: Types differ for {}."
                       " v1 is {} and v2 is {}"
                       "".format(me, tb, type(v1).__name__,
                                 type(v2).__name__))
@@ -287,7 +286,7 @@ def ts_equals(v1, v2, tb=None):
     return v1 == v2
 
 
-def is_dict_subset(new_dict, old_dict, verbose_messages_enable,
+def is_dict_subset(new_dict, old_dict,
                    verbose_dest_description="unknown file"):
     '''
     Is anything in new_dict not in (or different from) old_dict.
@@ -305,18 +304,15 @@ def is_dict_subset(new_dict, old_dict, verbose_messages_enable,
     for this_key in new_dict:
         if (this_key not in old_dict_keys):
             is_changed = True
-            if verbose_messages_enable:
-                print("SAVING '" + verbose_dest_description
-                      + "' since " + str(this_key)
-                      + " not in saved version.")
+            echo1("SAVING '" + verbose_dest_description
+                  + "' since " + str(this_key)
+                  + " not in saved version.")
             break
         elif not ts_equals(new_dict[this_key], old_dict[this_key],
                            tb=this_key+" in is_dict_subset for "+tb):
-            is_changed = True
-            if verbose_messages_enable:
-                print("SAVING '" + verbose_dest_description
-                      + "' since " + str(this_key)
-                      + " not same as saved version.")
+            echo1("SAVING '" + verbose_dest_description
+                  + "' since " + str(this_key)
+                  + " not same as saved version.")
             break
     return is_changed
 
@@ -377,10 +373,10 @@ def view_traceback(min_indent=""):
 def print_file(path, min_indent=""):
     line_count = 0
     if path is None:
-        print(min_indent+"print_file: path is None")
+        echo0(min_indent+"print_file: path is None")
         return 0
     if not os.path.isfile(path):
-        print(min_indent+"print_file: file does not exist")
+        echo0(min_indent+"print_file: file does not exist")
         return 0
     try:
         if min_indent is None:
@@ -399,8 +395,9 @@ def print_file(path, min_indent=""):
         # else:
         #     print(min_indent + "# " + str(line_count)
         #           + " line(s) in '" + path + "'")
-    except PermissionError:
-        print(min_indent+"print_file: could not read {}".format(path))
+    except PermissionError as ex:
+        echo0(min_indent+'print_file: could not read "{}": {}'
+              "".format(path, ex))
     return line_count
 
 
@@ -424,11 +421,11 @@ def get_dict_modified_by_conf_file(this_dict, path,
     nulls = ["None", "null", "~", "NULL"]
     entries_modified_count = 0
     results = this_dict
-    # print("Checking "+str(path)+" for settings...")
+    # echo2("Checking "+str(path)+" for settings...")
     if (results is None) or (type(results) is not dict):
         results = {}
     if os.path.isfile(path):
-        print("[ ConfigManager ] Using existing '" + path + "'")
+        echo1("[ ConfigManager ] Using existing '" + path + "'")
         ins = open(path, 'r')
         rawl = True
         line_n = 0
@@ -468,12 +465,12 @@ def get_dict_modified_by_conf_file(this_dict, path,
                 result_val = int(result_val)
             elif RepresentsFloat(result_val):
                 result_val = float(result_val)
-            # print("   CHECKING... " + result_name
+            # echo2("   CHECKING... " + result_name
             #       + ":"+result_val)
             if ((result_name not in results) or
                     (results[result_name] != result_val)):
                 entries_modified_count += 1
-                # print(str(entries_modified_count))
+                # echo2(str(entries_modified_count))
             results[result_name] = result_val
         ins.close()
     return results
@@ -493,9 +490,9 @@ def save_conf_from_dict(path, this_dict, assignment_operator="=",
                                + str(this_dict[this_key]) + "\n")
         outs.close()
     except PermissionError as e:
-        print("Could not finish saving chunk metadata to '" + str(path)
+        echo0("Could not finish saving chunk metadata to '" + str(path)
               + "': " + str(traceback.format_exc()))
-        print(e)
+        echo0(e)
 
 
 def get_list_from_hex(hex_string):
@@ -541,7 +538,7 @@ def s_to_tuple(line, debug_src_name="<unknown object>"):
                 player_z = int(pos_strings[2])
             result = player_x, player_y, player_z
         else:
-            print("'" + debug_src_name + "' has bad position data--"
+            echo0("'" + debug_src_name + "' has bad position data--"
                   + "should be 3-length (x,y,z) in position value: "
                   + str(pos_strings))
     return result
@@ -730,7 +727,7 @@ def is_allowed_in_variable_name_char(one_char):
         if one_char in identifier_chars:
             result = True
     else:
-        print("error in is_allowed_in_variable_name_char: one_char"
+        echo0("error in is_allowed_in_variable_name_char: one_char"
               " must be 1 character")
     return result
 
@@ -757,19 +754,50 @@ def find_any_not(haystack, char_needles, start=None, step=1):
     return result
 
 
-def explode_unquoted(haystack, delimiter):
+def explode_unquoted(haystack, delimiter, get_str_i_pair=False,
+                     strip=True):
+    '''
+    Explode using a delimiter except quoted delimiters using double or
+    single quotes. See quoted_slices for a function that uses quotes
+    but not delimiters.
+
+    Keyword arguments:
+    get_str_i_pair -- Get a list of tuples of (string, start, end)
+        instead of a list of strings. The slice defined by start, end
+        will include whitespace whether or not strip is used, though
+        strip will affect the string.
+    strip -- Remove whitespace from each element.
+    '''
     elements = list()
+    start = 0
+    echo2("explode_unquoted:")
     while True:
-        index = find_unquoted_not_commented(haystack, delimiter)
+        index = find_unquoted_not_commented(haystack, delimiter,
+                                            start=start)
+        echo1('- substring haystack[{}:]="{}"'
+              ''.format(start, haystack[start:]))
         if index >= 0:
-            elements.append(haystack[:index])
-            haystack = haystack[index+1:]
+            element = haystack[start:index].strip() if strip else haystack[start:index]
+            if get_str_i_pair:
+                elements.append((element, start, index))
+            else:
+                elements.append(element)
+            start = index + 1  # +1 to skip the delimiter
+            if start + len(elements[-1]) >= len(haystack):
+                break
         else:
             break
-    elements.append(haystack)
-    # ^ rest of haystack is the param after
-    #   last comma, else beginning if none
+
+    element = haystack[start:].strip() if strip else haystack[start:]
+    if get_str_i_pair:
+        elements.append((element, start, len(haystack)))
+    else:
+        elements.append(element)
+    # ^ The rest of haystack is the param after
+    #   last comma, else beginning if no comma
+    #   (There is always at least 1 entry, the last entry).
     return elements
+
 
 def find_dup(this_list, discard_whitespace_ignore_None_enable=True,
              ignore_list=None, ignore_numbers_enable=False):
@@ -816,16 +844,15 @@ def find_dup(this_list, discard_whitespace_ignore_None_enable=True,
                             ignore_this = number1 is not None
                         if not ignore_this:
                             result = i2
-                            if verbose_enable:
-                                print("[" + str(i1) + "]:"
-                                      + str(this_list[i1])
-                                      + " matches [" + str(i2) + "]:"
-                                      + str(this_list[i2]))
+                            echo1("[" + str(i1) + "]:"
+                                  + str(this_list[i1])
+                                  + " matches [" + str(i2) + "]:"
+                                  + str(this_list[i2]))
                             break
             if result > -1:
                 break
     else:
-        print("[ parsing.py ] ERROR in has_dups: " + str(this_list)
+        echo0("[ parsing.py ] ERROR in has_dups: " + str(this_list)
               + " is not a list")
     return result
 
@@ -858,10 +885,10 @@ def get_initial_value_from_conf(path, name, assignment_operator="="):
                             break
             ins.close()
         else:
-            print("ERROR in get_initial_value_from_conf: '" + str(path)
+            echo0("ERROR in get_initial_value_from_conf: '" + str(path)
                   + "' is not a file.")
     else:
-        print("ERROR in get_initial_value_from_conf: path is None.")
+        echo0("ERROR in get_initial_value_from_conf: path is None.")
     return result
 
 
@@ -940,20 +967,34 @@ def in_any_slice(i, ranges):
 END_BEFORE_QUOTE_ERR = "string ended before quote ended"
 
 def quoted_slices(haystack, start=0, endbefore=None,
-                  comment_delimiter="#"):
+                  comment_delimiter="#", comment_delimiters=None):
     '''
     Get a list of tuples where each tuple is the start and stop values
     for quoted portions of haystack. The first entry of the tuple is
     the first quotation mark (`"` or `'`) and the second entry of
     the tuple is 1 after the ending quote's index (as per slice
-    notation).
+    notation). See explode_unquoted for a function that does something
+    similar but also uses field delimiters.
 
     Keyword arguments:
     comment_delimiter -- Set a comment delimiter of any length to
                          prevent detections at or after the character.
                          Any comment_delimiter before the start is
                          ignored.
+    comment_delimiters -- Use this to specify one or more comment
+        delimiters. Examples: ['#'] for Python or ['#', '//'] for PHP
     '''
+    if comment_delimiters is not None:
+        if comment_delimiter is not None:
+            raise ValueError(
+                "Only specify comment_delimiter or comment_delimiters."
+            )
+    elif comment_delimiter is not None:
+        comment_delimiters = [comment_delimiter]
+    else:
+        raise ValueError(
+            "You must specify at least one comment delimiter."
+        )
     global quoted_slices_error
     quoted_slices_error = None
     results = []
@@ -967,11 +1008,10 @@ def quoted_slices(haystack, start=0, endbefore=None,
     elif endbefore < 0:
         new_endbefore = len(haystack) + endbefore
         # ^ + since already negative
-        if verbose_enable:
-            print("INFO: endbefore was negative so it will"
-                  " change to len(haystack)+offset (endbefore={},"
-                  " new_endbefore={})."
-                  "".format(endbefore, new_endbefore))
+        echo2("INFO: endbefore was negative so it will"
+              " change to len(haystack)+offset (endbefore={},"
+              " new_endbefore={})."
+              "".format(endbefore, new_endbefore))
         endbefore = new_endbefore
     if endbefore < start:
         raise ValueError("endbefore is < start which should never be"
@@ -980,19 +1020,22 @@ def quoted_slices(haystack, start=0, endbefore=None,
     i -= 1
     open_i = None
     prev_c = None
+    comment_started = False
     while i+1 < endbefore:
         i += 1
-        if verbose_enable:
-            print("(i={}, open_i={},".format(i, open_i))
+        echo2("(i={}, open_i={},".format(i, open_i))
         c = haystack[i]
-        if verbose_enable:
-            print(" c={})".format(c))
+        echo2(" c={})".format(c))
         if open_i is None:
             if c in quotes:
                 open_i = i
-            elif (haystack[i:i+len(comment_delimiter)]
-                    == comment_delimiter):
-                break
+            else:
+                for c_delim in comment_delimiters:
+                    if (haystack[i:i+len(c_delim)] == c_delim):
+                        comment_started = True
+                        break
+                if comment_started:
+                    break
         elif (c == haystack[open_i]) and (prev_c != "\\"):
             results.append((open_i, i+1))
             # ^ first quote & 1 after end quote as per slice notation
@@ -1001,9 +1044,18 @@ def quoted_slices(haystack, start=0, endbefore=None,
         prev_c = c
     if open_i is not None:
         quoted_slices_error = END_BEFORE_QUOTE_ERR
-        print("WARNING: The following line ended at {} before the quote"
-              " at column {} ended (endbefore={}):`{}`"
-              "".format(i, open_i+1, endbefore, haystack))
+        echo0("WARNING: The quote ([{}]) wasn't closed in"
+              " (i={}, endbefore={}):"
+              "".format(open_i+1, i, endbefore))
+        echo0("`{}`".format(haystack))
+        end_mark_i = endbefore - (open_i+1)
+        end_mark = ""
+        if end_mark_i >= 0:
+            # end_mark = "^end"
+            pass
+        echo0(" "*(open_i+1) + "^" + " "*end_mark_i + end_mark)
+        # raise SyntaxError("END_BEFORE_QUOTE_ERR")
+
     return results
 
 
@@ -1040,7 +1092,7 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
     if endbefore is None:
         endbefore = len(haystack)
     if endbefore > len(haystack):
-        print("WARNING: endbefore was too big so it will change to"
+        echo0("WARNING: endbefore was too big so it will change to"
               " len(haystack) (endbefore={}, len(haystack)={})."
               "".format(endbefore, len(haystack)))
         endbefore = len(haystack)
@@ -1049,16 +1101,15 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
     elif endbefore < 0:
         new_endbefore = len(haystack) + endbefore
         # ^ + since already negative
-        if verbose_enable:
-            print("INFO: endbefore was negative so it will"
-                  " change to len(haystack)+offset (endbefore={},"
-                  " new_endbefore={})."
-                  "".format(endbefore, new_endbefore))
+        echo2("INFO: endbefore was negative so it will"
+              " change to len(haystack)+offset (endbefore={},"
+              " new_endbefore={})."
+              "".format(endbefore, new_endbefore))
         endbefore = new_endbefore
     if len(haystack) == 0:
         # ^ prevents dubious meaning in ValueError below
         pass
-        # print("WARNING: haystack length is 0")
+        # echo1("WARNING: haystack length is 0")
         # raise ValueError("haystack length is 0")
         return -1
     elif endbefore < start:
@@ -1085,11 +1136,10 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
                                  allow_commented=False)
         if comment_i >= 0:
             if comment_i < endbefore:
-                if verbose_enable:
-                    print("[find_in_code] endbefore will become"
-                          " comment_i since the comment is before the"
-                          " end (endbefore={}, comment_i={})."
-                          "".format(endbefore, comment_i))
+                echo1("[find_in_code] endbefore will become"
+                      " comment_i since the comment is before the"
+                      " end (endbefore={}, comment_i={})."
+                      "".format(endbefore, comment_i))
                 endbefore = comment_i
 
     if enclosures is not None:
@@ -1119,22 +1169,20 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
         index = start
         if step < 0:
             index = endbefore - 1
-        if verbose_enable:
-            print("    find_in_code in "
-                  + haystack.strip() + ":")
+        echo2("    find_in_code in "
+              + haystack.strip() + ":")
         while ((step > 0 and index <= (endbefore-len(needle))) or
                (step < 0 and (index >= start))):
             this_char = haystack[index:index+1]
             left_char = None
             if index - 1 >= 0:
                 left_char = haystack[index-1:index]
-            if verbose_enable:
-                print("      {"
-                      "index:" + str(index) + ";"
-                      "this_char:" + str(this_char) + ";"
-                      "in_quote:" + str(in_quote) + ";"
-                      "opener_stack:" + str(opener_stack) + ";"
-                      "}")
+            echo2("      {"
+                  "index:" + str(index) + ";"
+                  "this_char:" + str(this_char) + ";"
+                  "in_quote:" + str(in_quote) + ";"
+                  "opener_stack:" + str(opener_stack) + ";"
+                  "}")
             if in_quote is None:
                 needle_i = -1
                 if enclosures is not None:
@@ -1205,8 +1253,8 @@ def find_unquoted_not_commented_not_parenthetical(haystack, needle,
     )
 
 
-def find_unquoted_not_commented(haystack, needle,
-    start=0, endbefore=-1, step=1, comment_delimiter="#"):
+def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
+                                step=1, comment_delimiter="#"):
     '''
     This function was lost and not found in a previous commit, and may
     have never been created after used. Therefore, 2021-03-13 it was

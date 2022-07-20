@@ -5,8 +5,10 @@ from unittest import TestCase
 
 from pycodetool import (
     pct,
-    prerr,
+    echo0,
+    set_verbosity,
 )
+
 from pycodetool.cc0code import (
     optionalD,
 )
@@ -14,7 +16,6 @@ from pycodetool.cc0code import (
 from pycodetool.parsing import (
     assertEqual,
     quoted_slices,
-    set_verbose,
     get_quoted_slices_error,
     which_slice,
     END_BEFORE_QUOTE_ERR,
@@ -27,14 +28,14 @@ AppDatas = None
 if platform.system() == "Windows":
     profile = os.environ.get("USERPROFILE")
     if profile is None:
-        prerr("ERROR: You must set USERPROFILE in Windows.")
+        echo0("ERROR: You must set USERPROFILE in Windows.")
         exit(1)
     # AppDatas = os.path.join(profile, "AppData", "Roaming")
     AppDatas = os.environ['APPDATA']
 else:
     profile = os.environ.get("HOME")
     if profile is None:
-        prerr("ERROR: You must set HOME in a non-Windows platform.")
+        echo0("ERROR: You must set HOME in a non-Windows platform.")
         exit(1)
     AppDatas = os.path.join(profile, ".config")
 
@@ -65,7 +66,7 @@ from pycodetool.parsing import (
 
 class TestFrameworkRemoval(TestCase):
     def test_find_unquoted_not_commented_not_parenthetical(self):
-        prerr("* find_unquoted_not_commented_not_parenthetical...")
+        echo0("* find_unquoted_not_commented_not_parenthetical...")
         found = find_unquoted_not_commented_not_parenthetical(
             "x = (i + a) + b # a",
             "a",
@@ -90,7 +91,7 @@ class TestFrameworkRemoval(TestCase):
         )
         assertEqual(found, good_i)
 
-        set_verbose(True)
+        set_verbosity(1)
 
         good_i = 20
         found = find_unquoted_not_commented_not_parenthetical(
@@ -181,9 +182,9 @@ class TestFrameworkRemoval(TestCase):
                                         " another escaped string"))
 
     def test_quoted_slices(self):
-        prerr("* test quoted_slices...")
+        echo0("* test quoted_slices...")
         # intentionally botch the results by starting after the opening quote:
-        test_s = 'x = "a" + (i + a) + "a" # "a"'
+        test_s = 'x = "a" + (i + a) + "a" # "b"'
         goodIs = [(6, 21), (22, 27)]
         assertEqual(test_s[goodIs[0][0]:goodIs[0][1]], '" + (i + a) + "',
                     tbs="The silent degradation test itself is wrong.")
@@ -194,8 +195,9 @@ class TestFrameworkRemoval(TestCase):
                                            " degrade to {}"
                                            "".format(gotIs, goodIs)))
         assertEqual(get_quoted_slices_error(), END_BEFORE_QUOTE_ERR)
+        echo0("^ TEST: An unclosed quote is expected since start=6")
 
-        test_s = 'x = "a" + (i + a) + "a" # "a"'
+        test_s = 'x = "a" + (i + a) + "a" # "c"'
         goodIs = [(4, 7), (20, 23)]
         assertEqual(test_s[goodIs[0][0]:goodIs[0][1]], '"a"',
                     tbs="The test itself is wrong.")
@@ -231,7 +233,7 @@ class TestFrameworkRemoval(TestCase):
         assertEqual(optionalD(11, 5).format(11), '11')
 
     def test_framework_removal(self):
-        prerr("* test framework to standard Python...")
+        echo0("* test framework to standard Python...")
         infile_path = None
         infile_name = "YAMLObject_fromCodeConverter.py"
         if not os.path.isfile(infile_name):
@@ -241,7 +243,7 @@ class TestFrameworkRemoval(TestCase):
                 if os.path.isfile(try_path):
                     infile_path = try_path
                     if i != test_data_dir_i:
-                        prerr("WARNING: Using external data file \"{}\" makes"
+                        echo0("WARNING: Using external data file \"{}\" makes"
                               " the test non-deterministic if it doesn't match"
                               " the one in \"{}\"."
                               "".format(infile_path, test_data_dir))
@@ -258,18 +260,18 @@ class TestFrameworkRemoval(TestCase):
         id_outfile_path = os.path.join(testOutDir, id_outfile_name)
 
         parser = pct.PCTParser(infile_path)
-        prerr("  * processing \"{}\"...".format(infile_path))
+        echo0("  * processing \"{}\"...".format(infile_path))
         parser.framework_to_standard_python(outfile_path)
         parser.save_identifier_lists(id_outfile_path)
-        prerr("  * saved identifiers to \"{}\"".format(id_outfile_path))
-        prerr("  * saved result to \"{}\"".format(outfile_path))
+        echo0("  * saved identifiers to \"{}\"".format(id_outfile_path))
+        echo0("  * saved result to \"{}\"".format(outfile_path))
 
     def assertAllEqual(self, list1, list2, tbs=None):
             '''
             [copied from pycodetools.parsing by author]
             '''
             if len(list1) != len(list2):
-                prerr("The lists are not the same length: list1={}"
+                echo0("The lists are not the same length: list1={}"
                       " and list2={}".format(list1, list2))
                 self.assertEqual(len(list1), len(list2))
             for i in range(len(list1)):
@@ -277,5 +279,5 @@ class TestFrameworkRemoval(TestCase):
                     self.assertEqual(list1[i], list2[i])
                 except AssertionError as ex:
                     if tbs is not None:
-                        prerr("reason string (tbs): " + tbs)
+                        echo0("reason string (tbs): " + tbs)
                     raise ex
