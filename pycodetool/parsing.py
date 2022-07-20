@@ -98,8 +98,8 @@ class ConfigManager:
         """
         Keyword arguments:
         interactive_enable -- If true, this method DOES ask for user
-        input if a variable does not exist. If default_value is None,
-        do not add the variable to _data if not entered.
+            input if a variable does not exist. If default_value is
+            None, do not add the variable to _data if not entered.
         """
         is_changed = False
         if name not in self._data:
@@ -215,8 +215,8 @@ def assertEqual(v1, v2, tbs=None):
 
     Keyword arguments:
     tbs -- traceback string (either caller or some sort of message to
-           show to describe what data produced the arguments if they're
-           derived from something else)
+        show to describe what data produced the arguments if they're
+        derived from something else)
     '''
     if ((v1 is True) or (v2 is True) or (v1 is False) or (v2 is False)
             or (v1 is None) or (v2 is None)):
@@ -801,8 +801,10 @@ def explode_unquoted(haystack, delimiter, get_str_i_pair=False,
 
 def find_dup(this_list, discard_whitespace_ignore_None_enable=True,
              ignore_list=None, ignore_numbers_enable=False):
+    """
+    DISCARD whitespace, and never match None to None
+    """
     result = -1
-    """DISCARDS whitespace, and never matches None to None"""
     if type(this_list) is list:
         for i1 in range(0, len(this_list)):
             for i2 in range(0, len(this_list)):
@@ -899,10 +901,9 @@ def find_which_needle(haystack, haystack_i, needles, subscript=None):
 
     Keyword arguments:
     subscript -- if each needle is subscriptable, subscript it with
-                 subscript before using it. Otherwise (if None) each
-                 element of needle will be used directly as usual.
-                 Example: if needles is ["()", "{}"] then set
-                 subscript=0 to look for only "(" and "{".
+        subscript before using it. Otherwise (if None) each element of
+        needle will be used directly as usual. Example: if needles is
+        ["()", "{}"] then set subscript=0 to look for only "(" and "{".
     '''
     for i in range(len(needles)):
         needle = needles[i]
@@ -924,16 +925,16 @@ def which_slice(v, ranges, length=None):
     Sequential arguments:
     v -- Check for this index within each range
     ranges -- A list of number pairs such as tuples [(start, stop),...]
-              where start is inclusive and stop is exclusive as per
-              Python slice and range notation.
+        where start is inclusive and stop is exclusive as per Python
+        slice and range notation.
 
     Keyword arguments:
     length -- If either of the values in any range is negative, you must
-              provide the length of the string to which the slices
-              refer (so that the real index can be calculated).
-              Otherwise this function will raise a ValueError.
+        provide the length of the string to which the slices refer (so
+        that the real index can be calculated). Otherwise this function
+        will raise a ValueError.
 
-    returns:
+    Returns:
     The first index in ranges that has the range that contains v, or
     -1 if v was not in any ranges.
     '''
@@ -978,9 +979,8 @@ def quoted_slices(haystack, start=0, endbefore=None,
 
     Keyword arguments:
     comment_delimiter -- Set a comment delimiter of any length to
-                         prevent detections at or after the character.
-                         Any comment_delimiter before the start is
-                         ignored.
+        prevent detections at or after the character. Any
+        comment_delimiter before the start is ignored.
     comment_delimiters -- Use this to specify one or more comment
         delimiters. Examples: ['#'] for Python or ['#', '//'] for PHP
     '''
@@ -1066,23 +1066,22 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
     '''
     Keyword arguments:
     start -- where to start (if step is negative go from endbefore-1 to
-             start, otherwise go from start to endbefore-1)
+        start, otherwise go from start to endbefore-1)
     endbefore -- Do not check at or after this value. If negative, start
-                 from len(haystack)+endbefore which will add a negative
-                 and subtract from length to obtain the first index to
-                 check. If step is negative start from endbefore-1. That
-                 is why this variable is not called "stop" and is not
-                 like "stop" in builtin Python functions.
+        from len(haystack)+endbefore which will add a negative and
+        subtract from length to obtain the first index to check. If
+        step is negative start from endbefore-1. That is why this
+        variable is not called "stop" and is not like "stop" in builtin
+        Python functions.
     enclosures -- Provide a list of strings, each 2 long, where the
-                  first character is an opener and the next character
-                  is a closer. If not None, only find in areas that are
-                  neither commented nor enclosed. Example:
-                  ["()", "[]"]
+        first character is an opener and the next character is a
+        closer. If not None, only find in areas that are neither
+        commented nor enclosed. Example: ["()", "[]"]
     allow_quoted -- allow even if within quotes (single or double)
     step -- Move in this direction, normally 1 or -1. If negative,
-            go from endbefore-1 to start and check for comment marks
-            beforehand (therefore negative step doubles the processing
-            time on average).
+        go from endbefore-1 to start and check for comment marks
+        beforehand (therefore negative step doubles the processing time
+        on average).
     '''
     result = -1
     closers = {}
