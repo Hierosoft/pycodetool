@@ -60,6 +60,167 @@ identifier_chars = alnum_chars+"_"
 identifier_and_dot_chars = identifier_chars+"."
 entries_modified_count = 0
 
+class AbstractFn:
+    '''
+    Properties
+    name -- anything else before the open parenthesis, such as the
+        function name etc. (The caller should clean up this part so it
+        is only the function name before creating an AbstractFn). This
+        should only be None if allow_bare_args and the data didn't
+        contain an open parenthesis.
+    raw_params -- a list where each element is a recieved function
+        parameter stored as a string (using the syntax of the source
+        language to appropriately represent the type).
+    source_path -- the source code file that produced the function,
+        otherwise None.
+    line_n -- the source code line number that produced the function,
+        starting at 1, otherwise None.
+    '''
+    def __init__(self, line, comment_delimiters=['#'],
+                 allow_bare_args=False,
+                 source_path=None, line_n=None):
+        '''
+        See "parse" documentation.
+        '''
+        self.parse(
+            line,
+            comment_delimiters=comment_delimiters,
+            allow_bare_args=allow_bare_args,
+            source_path=source_path,
+            line_n=line_n,
+        )
+
+    def clear(self):
+        self.raw_params = None
+        self.raw_params_slices = None
+        self.source_path = None
+        self.line_n = None
+        self.after = None
+        self.raw_name = None
+
+    def parse(self, line, comment_delimiters=['#'],
+              allow_bare_args=False,
+              source_path=None, line_n=None):
+        '''
+        Keyword arguments:
+        allow_bare_args -- Allow a line without the opening
+            parenthesis (If False, raise ValueError if no
+            [non-commented] "(").
+        source_path -- The source code path that contains the function,
+            (for debugging purposes, stored).
+        line_n -- The source code line number, starting with 1,
+            that contains the function (for debugging purposes, stored).
+        '''
+        self.clear()
+        self.source_path = source_path
+        self.line_n = line_n
+        if comment_delimiters is None:
+            comment_delimiters = []
+        if isinstance(comment_delimiters, str):
+            raise ValueError(
+                "comment_delimiters should be a list-like object."
+            )
+        if line is None:
+            return
+        open_paren_i = find_unquoted_not_commented(line, "(")
+        start = 0
+        close_paren_i = None
+        if open_paren_i >= 0:
+            start = open_paren_i + 1
+            self.raw_name = line[:open_paren_i]
+            if len(self.name) == 0:
+                raise ValueError(
+                    'There is no function name in `{}`'
+                    ''.format(line)
+                )
+            close_paren_i = find_in_code(
+                line,
+                ")",
+                start=start,
+                # endbefore=endbefore,
+                comment_delimiters=comment_delimiters,
+                enclosures=["()"],
+                allow_quoted=False,
+            )
+            # ^ find the end parenthesis accounting for nesting
+            if close_paren_i <= open_paren_i:
+                raise ValueError(
+                    'There is no closing ")" in `{}`'
+                    ''.format(line)
+                )
+        else:
+            if not allow_bare_args:
+                raise ValueError(
+                    'allow_bare_args is False but there is no'
+                    ' uncommented "(" in `{}`'
+                    ''.format(line)
+                )
+        args_index = open_paren_i + 1
+        args_part = line[args_index:close_paren_i]
+        results = explode_unquoted(
+            args_part,
+            ",",
+            get_str_i_tuple=True,
+            strip=False,
+        )
+        self.raw_params = []
+        self.raw_params_slices = []
+        for t in results:
+            param, p_start, p_end = t
+            self.raw_params.append(param)
+            self.raw_params_slices.append(
+                (p_start+args_index, p_end+args_index)
+            )
+        self.after = line[close_paren_i+1:]
+
+    @property
+    def name(self):
+        return self.raw_name.strip()
+
+    @name.setter
+    def name(self, name):
+        prev_raw_name = self.raw_name
+        self.raw_name = name
+        self.name = name.strip()
+        # if prev_raw_name is not None:
+        #     delta = len(self.raw_name) - len(prev_raw_name)
+
+    def line_error(self, error):
+        result = ""
+        if self.source_path is not None:
+            result = self.source_path + ":"
+            if (self.line_n is not None) and (self.line_n >= 1):
+                result += str(self.line_n) + ": "
+            else:
+                result += " "
+        return result + error
+
+    def set_param(self, index, code):
+        '''
+        Sequential arguments:
+        code -- the code, including quotes if any, which defines the
+            value (Examples: `"Hello"`, `True`, 100)
+        '''
+        self.raw_params[index] = code
+
+    def to_string(self):
+        result = ""
+        if self.raw_name is not None:
+            result += self.raw_name
+        if self.raw_name.strip().endswith("("):
+            raise ValueError(
+                'The function name "{}" must not end with "("'
+                ''.format(self.raw_name)
+            )
+        result += "("
+        sep = ""
+        for raw_param in self.raw_params:
+            result += sep
+            result += raw_param
+            sep = ","
+        result += ")"
+        return result
+
 
 class InstalledFile:
     source_dir_path = None
@@ -437,7 +598,7 @@ def get_dict_modified_by_conf_file(this_dict, path,
             strp = rawl.strip()
             if len(strp) < 1:
                 continue
-            if strp[0] == comment_delimiter:
+            if strp[0:len(comment_delimiter)] == comment_delimiter:
                 continue
             if strp[0] == "-":
                 # ignore yaml arrays
@@ -754,7 +915,7 @@ def find_any_not(haystack, char_needles, start=None, step=1):
     return result
 
 
-def explode_unquoted(haystack, delimiter, get_str_i_pair=False,
+def explode_unquoted(haystack, delimiter, get_str_i_tuple=False,
                      strip=True):
     '''
     Explode using a delimiter except quoted delimiters using double or
@@ -762,7 +923,7 @@ def explode_unquoted(haystack, delimiter, get_str_i_pair=False,
     but not delimiters.
 
     Keyword arguments:
-    get_str_i_pair -- Get a list of tuples of (string, start, end)
+    get_str_i_tuple -- Get a list of tuples of (string, start, end)
         instead of a list of strings. The slice defined by start, end
         will include whitespace whether or not strip is used, though
         strip will affect the string.
@@ -774,11 +935,11 @@ def explode_unquoted(haystack, delimiter, get_str_i_pair=False,
     while True:
         index = find_unquoted_not_commented(haystack, delimiter,
                                             start=start)
-        echo1('- substring haystack[{}:]="{}"'
+        echo2('- substring haystack[{}:]="{}"'
               ''.format(start, haystack[start:]))
         if index >= 0:
             element = haystack[start:index].strip() if strip else haystack[start:index]
-            if get_str_i_pair:
+            if get_str_i_tuple:
                 elements.append((element, start, index))
             else:
                 elements.append(element)
@@ -789,7 +950,7 @@ def explode_unquoted(haystack, delimiter, get_str_i_pair=False,
             break
 
     element = haystack[start:].strip() if strip else haystack[start:]
-    if get_str_i_pair:
+    if get_str_i_tuple:
         elements.append((element, start, len(haystack)))
     else:
         elements.append(element)
@@ -967,8 +1128,9 @@ def in_any_slice(i, ranges):
 
 END_BEFORE_QUOTE_ERR = "string ended before quote ended"
 
+
 def quoted_slices(haystack, start=0, endbefore=None,
-                  comment_delimiter="#", comment_delimiters=None):
+                  comment_delimiters=["#"]):
     '''
     Get a list of tuples where each tuple is the start and stop values
     for quoted portions of haystack. The first entry of the tuple is
@@ -978,23 +1140,12 @@ def quoted_slices(haystack, start=0, endbefore=None,
     similar but also uses field delimiters.
 
     Keyword arguments:
-    comment_delimiter -- Set a comment delimiter of any length to
-        prevent detections at or after the character. Any
-        comment_delimiter before the start is ignored.
     comment_delimiters -- Use this to specify one or more comment
         delimiters. Examples: ['#'] for Python or ['#', '//'] for PHP
     '''
-    if comment_delimiters is not None:
-        if comment_delimiter is not None:
-            raise ValueError(
-                "Only specify comment_delimiter or comment_delimiters."
-            )
-    elif comment_delimiter is not None:
-        comment_delimiters = [comment_delimiter]
-    else:
-        raise ValueError(
-            "You must specify at least one comment delimiter."
-        )
+    if comment_delimiters is None:
+        echo0("WARNING: quoted_slices got no comment delimiters.")
+        comment_delimiters = []
     global quoted_slices_error
     quoted_slices_error = None
     results = []
@@ -1021,11 +1172,11 @@ def quoted_slices(haystack, start=0, endbefore=None,
     open_i = None
     prev_c = None
     comment_started = False
+    echo2("comment_delimiters={}".format(comment_delimiters))
     while i+1 < endbefore:
         i += 1
-        echo2("(i={}, open_i={},".format(i, open_i))
         c = haystack[i]
-        echo2(" c={})".format(c))
+        echo2("( i={}, open_i={}, c={} )".format(i, open_i, c))
         if open_i is None:
             if c in quotes:
                 open_i = i
@@ -1060,7 +1211,7 @@ def quoted_slices(haystack, start=0, endbefore=None,
 
 
 def find_in_code(haystack, needle, start=0, endbefore=None,
-                 step=1, comment_delimiter="#",
+                 step=1, comment_delimiters=["#"],
                  enclosures=None, allow_quoted=True,
                  allow_commented=False):
     '''
@@ -1086,6 +1237,8 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
     result = -1
     closers = {}
     comment_i = -1
+    if comment_delimiters is None:
+        comment_delimiters = []
     if step == 0:
         raise ValueError("step is 0")
     if endbefore is None:
@@ -1123,16 +1276,21 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
         q_slices = quoted_slices(haystack, start=start,
                                  endbefore=endbefore)
     if (step < 0) and (not allow_commented):
-        comment_i = find_in_code(haystack, comment_delimiter,
-                                 start=0,
-                                 # endbefore=endbefore
-                                 # ^ never end early to find comment!
-                                 step=1, # forward to find comment!
-                                 enclosures=None, # ignore for comment
-                                 allow_quoted=False, # False for comment
-                                 comment_delimiter=None,
-                                 # ^ None since it is the needle now
-                                 allow_commented=False)
+        for comment_delimiter in comment_delimiters:
+            delI = find_in_code(haystack, comment_delimiter,
+                                start=0,
+                                # endbefore=endbefore
+                                # ^ never end early to find comment!
+                                step=1, # forward to find comment!
+                                enclosures=None, # ignore for comment
+                                allow_quoted=False, # False for comment
+                                comment_delimiters=None,
+                                # ^ None since it is the needle now
+                                allow_commented=False)
+            if delI >= 0:
+                if (comment_i < 0) or (delI < comment_i):
+                    comment_i = delI
+
         if comment_i >= 0:
             if comment_i < endbefore:
                 echo1("[find_in_code] endbefore will become"
@@ -1173,6 +1331,11 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
         while ((step > 0 and index <= (endbefore-len(needle))) or
                (step < 0 and (index >= start))):
             this_char = haystack[index:index+1]
+            here_c_del = None
+            for c_del in comment_delimiters:
+                if haystack[index:index+len(c_del)] == c_del:
+                    here_c_del = c_del
+                    break
             left_char = None
             if index - 1 >= 0:
                 left_char = haystack[index-1:index]
@@ -1194,7 +1357,7 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
                     if haystack[index:index+len(closer)] == closer:
                         is_closing = True
                 if ((not allow_commented)
-                        and ((this_char == comment_delimiter)
+                        and ((here_c_del is not None)
                              or (haystack[index:index+3] == '"""')
                              or (haystack[index:index+3] == "'''"))
                     ):
@@ -1232,7 +1395,7 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
 
 
 def find_unquoted_not_commented_not_parenthetical(haystack, needle,
-        start=0, endbefore=-1, step=1, comment_delimiter="#"):
+        start=0, endbefore=-1, step=1, comment_delimiters=["#"]):
     '''
     This function was lost and not found in a previous commit, and may
     have never been created after used. Therefore, 2021-03-13 it was
@@ -1246,14 +1409,14 @@ def find_unquoted_not_commented_not_parenthetical(haystack, needle,
         start=start,
         endbefore=endbefore,
         step=step,
-        comment_delimiter=comment_delimiter,
+        comment_delimiters=comment_delimiters,
         enclosures=["()"],
         allow_quoted=False,
     )
 
 
 def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
-        step=1, comment_delimiter="#"):
+        step=1, comment_delimiters=["#"]):
     '''
     This function was lost and not found in a previous commit, and may
     have never been created after used. Therefore, 2021-03-13 it was
@@ -1267,12 +1430,12 @@ def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
         start=start,
         endbefore=endbefore,
         step=step,
-        comment_delimiter=comment_delimiter,
+        comment_delimiters=comment_delimiters,
         allow_quoted=False,
     )
 
 def find_unquoted_even_commented(haystack, needle, start=0,
-        endbefore=-1, step=1, comment_delimiter="#"):
+        endbefore=-1, step=1, comment_delimiters=["#"]):
     '''
     This function was lost and not found in a previous commit, and may
     have never been created after used. Therefore, 2021-03-13 it was
@@ -1286,7 +1449,7 @@ def find_unquoted_even_commented(haystack, needle, start=0,
         start=start,
         endbefore=endbefore,
         step=step,
-        comment_delimiter=comment_delimiter,
+        comment_delimiters=comment_delimiters,
         allow_quoted=False,
         allow_commented=True,
     )

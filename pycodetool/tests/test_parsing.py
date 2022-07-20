@@ -10,6 +10,13 @@ import unittest
 import sys
 import os
 
+my_dir = os.path.dirname(os.path.abspath(__file__))
+module_dir = os.path.dirname(my_dir)
+repo_dir = os.path.dirname(module_dir)
+
+if __name__ == "__main__":
+    sys.path.insert(0, repo_dir)
+
 from pycodetool import (
     echo0,
     echo1,
@@ -26,7 +33,10 @@ from pycodetool.parsing import (
     explode_unquoted,
     find_unquoted_not_commented_not_parenthetical,
     assertEqual,  # This is a special one with custom output.
+    AbstractFn,
 )
+
+
 
 from pycodetool.cc0code import (
     optionalD,
@@ -72,7 +82,6 @@ class TestParsing(unittest.TestCase):
         good_pairs = []
         for i in range(len(good_indices)):
             good_pairs.append((good_indices[i], good_ends[i]))
-
         results = quoted_slices(subject)
 
         self.assertEqual(
@@ -95,12 +104,20 @@ class TestParsing(unittest.TestCase):
         )
 
     def test_quoted_slices_comment_exclusion(self):
+        set_verbosity(1)
+        subject = 'x = "a" + (i + a) + "a"  // "a"'
+        slices = quoted_slices(subject, comment_delimiters=["//", "#"])
+        self.assertEqual(
+            len(slices),
+            2
+        )
+
         subject = 'x = "a" + (i + a) + "a" # "a"'
         #          0   4 6             20
         #                                22  26
         #                                      28
         # ^ Note the quotes 26 and 28 should be ignored since commented.
-        slices = quoted_slices(subject)
+        slices = quoted_slices(subject, comment_delimiters=["//", "#"])
         self.assertEqual(
             len(slices),
             2
@@ -109,7 +126,6 @@ class TestParsing(unittest.TestCase):
         for params in slices:
             parts.append(subject[params[0]:params[1]])
         self.assertEqual(parts, ['"a"', '"a"'])
-
 
     def test_quoted_slices_start(self):
         echo0("* test quoted_slices...")
@@ -210,7 +226,7 @@ class TestParsing(unittest.TestCase):
         for i in range(len(good_params)):
             good_pairs.append((good_params[i], good_indices[i], good_ends[i]))
 
-        results = explode_unquoted(subject, ",", get_str_i_pair=True)
+        results = explode_unquoted(subject, ",", get_str_i_tuple=True)
 
         self.assertEqual(
             results,
@@ -331,3 +347,38 @@ class TestParsing(unittest.TestCase):
         )
         assertEqual(found, good_i, tbs=("finding the last escaped string after"
                                         " another escaped string"))
+
+    def test_parse_function(self):
+        fnStr0 = "    mysqli_connect(\"localhost\", 'dbn', 'pwd', 'dbn')"
+        # ^ use 'dbn' twice for testing dbname, which is
+        #   sometimes the same as the dbuser.
+        fnStr1 = "    mysqli_connect(\"localhost\", $dbuser, 'pwd', 'dbn')"
+        abstractfn = AbstractFn(fnStr0)
+        self.assertEqual(abstractfn.to_string(), fnStr0)
+        abstractfn.set_param(1, " $dbuser")
+        self.assertEqual(abstractfn.to_string(), fnStr1)
+
+    '''
+    def test_change_function_param(self):
+        self.assertEqual(
+            replace_param_if(fnStr0, 1, " $dbuser", "'dbn'"),
+            fnStr1
+        )
+        self.assertEqual(
+            replace_param_if(fnStr0, 1, " $dbuser", "dbn"),
+            fnStr1,
+            find_if_any_quotes=True,
+        )
+        self.assertEqual(
+            replace_param_if(fnStr0, 1, " $dbuser", "dbn"),
+            fnStr0
+        ) # It shouldn't change in this case.
+    '''
+
+
+if __name__ == "__main__":
+    testparsing = TestParsing()
+    for name in dir(testparsing):
+        if name.startswith("test"):
+            fn = getattr(testparsing, name)
+            fn()  # Look at def test_* for the code if tracebacks start here
