@@ -11,9 +11,22 @@ versionedModule = {}
 versionedModule['urllib'] = 'urllib'
 if python_mr == 2:
     versionedModule['urllib'] = 'urllib2'
-long_description = ""
-with open("readme.md", "r") as fh:
-    long_description = fh.read()
+
+install_requires = []
+
+with open("requirements.txt", "r") as ins:
+    for rawL in ins:
+        line = rawL.strip()
+        if len(line) < 1:
+            continue
+        install_requires.append(line)
+
+description = '''
+'''
+long_description = description
+if os.path.isfile("readme.md"):
+    with open("readme.md", "r") as fh:
+        long_description = fh.read()
 
 setuptools.setup(
     name='pycodetool',
@@ -41,11 +54,12 @@ setuptools.setup(
     # See <https://stackoverflow.com/questions/27784271/
     # how-can-i-use-setuptools-to-generate-a-console-scripts-entry-
     # point-which-calls>
-    # entry_points={
-    #     'console_scripts': ['pycodetool=pycodetool:main'],
-    # },
-    install_requires=[
-    ],
+    entry_points={
+        'console_scripts': [
+            'ggrep=pycodetool.ggrep:main'
+        ],
+    },
+    install_requires=install_requires,
     #     versionedModule['urllib'],
     # ^ "ERROR: Could not find a version that satisfies the requirement urllib (from nopackage) (from versions: none)
     # ERROR: No matching distribution found for urllib"
