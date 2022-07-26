@@ -1,11 +1,11 @@
 import unittest
 import sys
 
-from linuxpreinstall import (
+from pycodetool import (
     set_verbosity,
 )
 
-from linuxpreinstall.ggrep import (
+from pycodetool.ggrep import (
     is_like,
     is_like_any,
 )

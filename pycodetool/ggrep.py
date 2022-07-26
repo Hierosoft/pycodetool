@@ -74,7 +74,7 @@ import re
 import json
 import platform
 
-from linuxpreinstall import (
+from pycodetool import (
     echo0,  # formerly prerr as error
     echo1,  # formerly debug
     echo2,  # formerly extra

@@ -37,3 +37,8 @@ def echo2(*args, **kwargs):
         return
     print(*args, file=sys.stderr, **kwargs)
 
+
+def echo3(*args, **kwargs):
+    if verbosity < 3:
+        return
+    print(*args, file=sys.stderr, **kwargs)
