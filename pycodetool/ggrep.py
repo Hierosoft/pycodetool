@@ -552,6 +552,88 @@ def is_like_any(haystack, needles, allow_blank=False, quiet=False):
     return False
 
 
+def gitignore_to_rsync_in_ex(gitignore_path, rsync_from
+                             ignore_from=None):
+    '''
+    Get a pair of include and exclude files (one or both can be None if
+    not applicable) from the projects .gitignore file.
+    The --include-from must be used before --exclude-from since rsync uses
+    the first matching pattern.
+
+    Sequential arguments:
+    gitignore_path -- Use this .gitignore file.
+    rsync_from -- Construct each include and exclude as if the rsync
+        source is this directory.
+
+    Keyword arguments:
+    ignore_from -- Construct each include and exclude as if the
+        .gitignore is in this directory.
+    '''
+    if rsync_from is not None:
+        if len(rsync_from.strip()) == 0:
+            rsync_from = None
+    if ignore_from is None:
+        ignore_from = os.path.dirname(gitignore_path)
+    elif ignore_from is not None:
+        if len(ignore_from.strip()) == 0:
+            ignore_from = None
+    if rsync_from is None:
+        raise ValueError("rsync_from is blank.")
+    if ignore_from is None:
+        raise ValueError("ignore_from is blank.")
+    paths = [None, None]
+    patterns = [[], []]
+    names = ["include", "exclude"]
+
+    # TODO: implement as per
+    #   <https://stackoverflow.com/a/50059607/4541104>:
+    '''
+    rsync -ah --delete
+        --include .git --exclude-from="$(git -C SRC ls-files \
+            --exclude-standard -oi --directory >.git/ignores.tmp && \
+            echo .git/ignores.tmp')" \
+        SRC DST
+    '''
+
+    with open(gitignore_path, 'r') as ins:
+        for rawL in ins:
+            line = rawL.strip()
+            if len(line) < 1:
+                continue
+            if line.startswith("#"):
+                continue
+            AS_IDX = 1
+            # Related advanced rsync filter syntax is described at
+            #   <https://unix.stackexchange.com/a/503295/343286>.
+            if line.startswith("!"):
+                AS_IDX = 0
+                line = line[1:]
+
+            if line.startswith("**/"):
+                line = line[1:]
+                # change to rsync "*/" format
+            elif line.endswith("/**"):
+                echo0("/** syntax is not implemented in ggrep.")
+                continue
+            elif "**" in line:
+                echo0("** syntax is not implemented in ggrep.")
+                continue
+            paths[AS_IDX].append(line)
+
+    for i in range(2):
+        if len(patterns[i]) < 1:
+            continue
+        path = os.path.join(
+            self.get_cache_dir(),
+            "{}.txt".format(names[i])
+        )
+        with open(path, 'w') as outs:
+            for line in patterns[i]:
+                outs.write(line+"\n")
+
+    return paths[0], paths[1]
+
+
 def ggrep(pattern, path, more_args=None, include=None, recursive=True,
           quiet=True, ignore=None, ignore_root=None, gitignore=True,
           show_args_warnings=True, allow_non_regex_pattern=True,
