@@ -552,8 +552,8 @@ def is_like_any(haystack, needles, allow_blank=False, quiet=False):
     return False
 
 
-def gitignore_to_rsync_in_ex(gitignore_path, rsync_from,
-                             ignore_from=None):
+def gitignore_to_rsync_pair(gitignore_path, rsync_from, tmp_dir,
+                            ignore_from=None):
     '''
     Get a pair of include and exclude files (one or both can be None if
     not applicable) from the projects .gitignore file.
@@ -564,6 +564,9 @@ def gitignore_to_rsync_in_ex(gitignore_path, rsync_from,
     gitignore_path -- Use this .gitignore file.
     rsync_from -- Construct each include and exclude as if the rsync
         source is this directory.
+    tmp_dir -- Place the zero to two files in this directory. The caller is
+        responsible for deleting the files at any paths returned when they
+        are done being used.
 
     Keyword arguments:
     ignore_from -- Construct each include and exclude as if the
@@ -610,21 +613,24 @@ def gitignore_to_rsync_in_ex(gitignore_path, rsync_from,
                 line = line[1:]
 
             if line.startswith("**/"):
+                # Change to rsync "*/" (any depth) format.
                 line = line[1:]
-                # change to rsync "*/" format
             elif line.endswith("/**"):
                 echo0("/** syntax is not implemented in ggrep.")
                 continue
             elif "**" in line:
                 echo0("** syntax is not implemented in ggrep.")
                 continue
-            paths[AS_IDX].append(line)
+            elif (not line.startswith("/")) and (not line.startswith("*/")):
+                # Change to rsync "*/" (any depth) format.
+                line = "*/" + line
+            patterns[AS_IDX].append(line)
 
     for i in range(2):
         if len(patterns[i]) < 1:
             continue
         path = os.path.join(
-            self.get_cache_dir(),
+            tmp_dir,
             "{}.txt".format(names[i])
         )
         with open(path, 'w') as outs:
