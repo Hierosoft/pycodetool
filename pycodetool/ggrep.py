@@ -552,7 +552,7 @@ def is_like_any(haystack, needles, allow_blank=False, quiet=False):
     return False
 
 
-def gitignore_to_rsync_in_ex(gitignore_path, rsync_from
+def gitignore_to_rsync_in_ex(gitignore_path, rsync_from,
                              ignore_from=None):
     '''
     Get a pair of include and exclude files (one or both can be None if
