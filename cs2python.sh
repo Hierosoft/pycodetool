@@ -1,9 +1,19 @@
 #!/bin/sh
 if [ -z "$1" ]; then
-    echo "You must specify a full path to a cs file as the first parameter."
+    echo "Error: You must specify a full path to a cs file as the first parameter, then an output directory."
     exit 1
 fi
+prev_path="`pwd`"
 tree="`realpath $1`"
+dest="$2"
+if [ -z "$dest" ]; then
+    echo "Error: You must specify an output directory."
+    exit 1
+fi
+if [ ! -d "$dest" ]; then
+    echo "Error: You must specify an existing output directory."
+    exit 1
+fi
 cs2py_vendor=shannoncruey
 cs2py_git="https://github.com/$cs2py_vendor/csharp-to-python.git"
 REPOS=~/Downloads/git
@@ -43,6 +53,7 @@ else
 fi
 echo "OK"
 
+cat > /dev/null <<END
 target_msg="each file of $tree"
 if [ -f $tree ]; then
     target_msg="$tree"
@@ -53,8 +64,24 @@ fi
 echo "* Next, 'cd $cs2py_repo' then copy $target_msg to $cs2py_repo/convert.in and run:"
 echo "  python3 convert.py aspx"
 echo "  * then copy convert.out to the target python file you want to save."
+END
 
-exit 0
+cd "$prev_path"
+CS2PYTHON=cs2python
+if [ ! -f "`command -v cs2python`" ]; then
+    if [ ! -d "../pycodetool" ]; then
+        echo "Error: $cs2py_repo was installed, but pycodetool couldn't be found so you should use:"
+        echo "pycodetool/cs2python \"$1\" \"$2\""
+        echo "# ^ but change pycodetool to the correct location."
+        exit 1
+    else
+        CS2PYTHON="../pycodetool/cs2python"
+    fi
+fi
+echo "Running $CS2PYTHON \"$tree\" \"$dest\" --converter \"$cs2py_repo/convert.py\""
+python3 $CS2PYTHON "$tree" "$dest" --converter "$cs2py_repo/convert.py"
+
+exit $?
 
 cat > /dev/null <<END
 echo "FizzerWL's C# to HAXE converter requires C# and is only known to compile in an IDE."
