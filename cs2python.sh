@@ -14,7 +14,8 @@ if [ ! -d "$dest" ]; then
     echo "Error: You must specify an existing output directory."
     exit 1
 fi
-cs2py_vendor=shannoncruey
+# cs2py_vendor=shannoncruey
+cs2py_vendor=poikilos
 cs2py_git="https://github.com/$cs2py_vendor/csharp-to-python.git"
 REPOS=~/Downloads/git
 cs2py_name="csharp-to-python"

@@ -28,7 +28,8 @@ See also C# to Haxe converters:
 
 See also C# to Python converters:
 - <https://github.com/isukces/cs2python>: Convert C# numpy code to Python numpy code properly.
-- <https://github.com/shannoncruey/csharp-to-python>: Convert aspx properly (syntax only).
+- <https://github.com/poikilos/csharp-to-python>: Convert aspx properly
+  (syntax only).
   - Manual changes are necessary afterward. See csharp-to-python.md
 
 Discussions about C# to Python conversion:

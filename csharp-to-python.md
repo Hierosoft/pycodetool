@@ -1,6 +1,7 @@
-# Notes on shannoncruey's csharp-to-python
+# Notes on csharp-to-python
 
-Manual changes are necessary after using shannoncruey's csharp-to-python.
+Manual changes are necessary after using Poikilos' (fork of
+shannoncruey's) csharp-to-python.
 The shim functions below were implemented manually in
 <https://github.com/poikilos/RetractionTowerProcessor> and the latest versions of them can
 be found there until they are implemented here.

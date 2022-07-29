@@ -2,8 +2,7 @@
 '''
 # csharptopython
 This module utilizes
-[csharp-to-python](https://github.com/shannoncruey/csharp-to-python) by
-shannoncruey.
+[csharp-to-python](https://github.com/poikilos/csharp-to-python).
 
 You must specify a file or directory followed by a destination
 directory:
@@ -30,7 +29,9 @@ from pycodetool import (
 
 HOME = pathlib.Path.home()
 DOWNLOADS = os.path.join(HOME, "Downloads")
-DEFAULT_CONVERTER = os.path.join(DOWNLOADS, "git", "shannoncruey",
+# DEFAULT_CONVERTER = os.path.join(DOWNLOADS, "git", "shannoncruey",
+#                                  "csharp-to-python", "convert.py")
+DEFAULT_CONVERTER = os.path.join(HOME, "git",
                                  "csharp-to-python", "convert.py")
 CONVERTER = DEFAULT_CONVERTER
 
@@ -42,7 +43,7 @@ def usage():
 def io_set_converter(path):
     '''
     Set the converter such as
-    ~/Downloads/git/shannoncruey/csharp-to-python/convert.py.
+    ~/git/csharp-to-python/convert.py.
     This function only works with other io_* functions, so the converter
     script must input a convert.in file in the same directory as the
     script, and output a convert.out file in the same directory as the
@@ -55,7 +56,7 @@ def io_set_converter(path):
 def io_csharp_to_python_file(path, dest_dir):
     '''
     Convert a single C# file to a single py file using CONVERTER
-    shannoncruey/csharp-to-python (or whatever converter script is
+    poikilos/csharp-to-python (or whatever converter script is
     set via the set_converter function).
     '''
     if not os.path.isfile(CONVERTER):
@@ -113,7 +114,7 @@ def io_csharp_to_python_file(path, dest_dir):
 def io_csharp_to_python(path, dest_dir, allow_make_dir=False,
                         use_hidden=False):
     '''
-    Use shannoncruey/csharp-to-python to read input C# files and output
+    Use poikilos/csharp-to-python to read input C# files and output
     py files then put the resulting convert.out file into the
     destination with the correct name (keep filename from path but
     change the extension).
