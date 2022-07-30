@@ -1,4 +1,4 @@
-#!/usr/env/python
+# -*- coding: utf-8 -*-
 '''
 Purpose: This submodule provides function that mimic CLR features for
   code converted from CLR languages to Python. Therefore:
@@ -140,8 +140,15 @@ def NumberToStr(n):
     '''
     Mimic c# decimal1.ToString() behavior common to G-code (lose the
     decimal places if not present) since in Python, str(float(1.0))
-    is "1.0".
+    is "1.0" but the desired output of the .NET code was "1".
     '''
     if isinstance(n, float) and (float(int(n)) == n):
         return str(int(n))
     return str(n)
+
+
+def IsDigit(c):
+    if len(c) != 1:
+        raise ValueError("The param must be a character but is"
+                         " \"{}\".".format(param))
+    return c in "0123456789"
