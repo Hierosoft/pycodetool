@@ -1043,7 +1043,7 @@ def filter_tree(path, more_args=None, include=None, recursive=True,
                 #   must occur (yield path before this loop instead)
             except DontStopIteration as ex:
                 if not contains_any(str(ex), TRIVIAL_EXCEPTION_FLAGS):
-                    echo0("  "+str(ex))
+                    echo0(str(ex))
                     # ^ Show the message explaining why the file or
                     #   directory was ignored, without interfering with
                     #   stdout.
