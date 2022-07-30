@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jul 19 18:29:39 2022
@@ -141,7 +140,8 @@ class TestParsing(unittest.TestCase):
                                            " degrade to {}"
                                            "".format(gotIs, goodIs)))
         assertEqual(get_quoted_slices_error(), END_BEFORE_QUOTE_ERR)
-        echo0("^ TEST: An unclosed quote is expected since start=6")
+        echo0("^ TEST: An unterminated quote is expected since start=6"
+              " (if it warned correctly, it PASSED)")
 
         test_s = 'x = "a" + (i + a) + "a" # "c"'
         goodIs = [(4, 7), (20, 23)]
@@ -377,8 +377,8 @@ class TestParsing(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    testparsing = TestParsing()
-    for name in dir(testparsing):
+    testcase = TestParsing()
+    for name in dir(testcase):
         if name.startswith("test"):
-            fn = getattr(testparsing, name)
+            fn = getattr(testcase, name)
             fn()  # Look at def test_* for the code if tracebacks start here

@@ -42,3 +42,20 @@ def echo3(*args, **kwargs):
     if verbosity < 3:
         return
     print(*args, file=sys.stderr, **kwargs)
+
+
+def to_syntax_error(path, lineN, msg, col=None):
+    '''
+    Convert the error to a syntax error that specifies the file and line
+    number that has the bad syntax.
+
+    Keyword arguments:
+    col -- is the character index relative to the start of the line,
+        starting at 1 for compatibility with outputinspector (which will
+        subtract 1 if using editors that start at 0).
+    '''
+    if lineN is not None:
+        if col is not None:
+            return "{}:{}:{}: {}".format(path, lineN, col, msg)
+        return "{}:{}: {}".format(path, lineN, msg)
+    return "{}: {}".format(path, msg)
