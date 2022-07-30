@@ -26,6 +26,9 @@ from pycodetool import (
     echo2,
     set_verbosity,
 )
+from pycodetool.csharptopython import (
+    csharp_to_python,
+)
 
 HOME = pathlib.Path.home()
 DOWNLOADS = os.path.join(HOME, "Downloads")
@@ -53,6 +56,7 @@ def io_set_converter(path):
     CONVERTER = path
 
 
+# shares some code with csharp.io_csharp_to_python_file
 def io_csharp_to_python_file(path, dest_dir):
     '''
     Convert a single C# file to a single py file using CONVERTER
@@ -111,54 +115,6 @@ def io_csharp_to_python_file(path, dest_dir):
     return 0
 
 
-def io_csharp_to_python(path, dest_dir, allow_make_dir=False,
-                        use_hidden=False):
-    '''
-    Use poikilos/csharp-to-python to read input C# files and output
-    py files then put the resulting convert.out file into the
-    destination with the correct name (keep filename from path but
-    change the extension).
-
-    Keyword arguments:
-    allow_make_dir -- Make dest_dir if it does not exist. This argument
-        should usually be set to False, but it is set automatically to
-        True during recursive calls.
-    use_hidden -- Include hidden files.
-    '''
-    if not os.path.isdir(dest_dir):
-        if allow_make_dir:
-            os.makedirs(dest_dir)
-        else:
-            raise ValueError('"{}" does not exist.'.format(dest_dir))
-
-    if os.path.isfile(path):
-        return io_csharp_to_python_file(path, dest_dir)
-    elif os.path.isdir(path):
-        code = 0
-        for sub in os.listdir(path):
-            if sub.startswith("."):
-                if not use_hidden:
-                    continue
-            subPath = os.path.join(path, sub)
-            parent = os.path.join(dest_dir, sub)
-            if os.path.isfile(subPath):
-                parent = dest_dir
-                if not sub.lower().endswith(".cs"):
-                    echo0('# * skipping non-cs file "{}"'
-                          ''.format(subPath))
-                    continue
-            code = io_csharp_to_python(
-                subPath,
-                parent,
-                allow_make_dir=True,
-            )
-            if code != 0:
-                break
-        return code
-    echo0('Error: "{}" is neither a file nor directory.'.format(path))
-    return 1
-
-
 def main():
     locations = []
     key = None
@@ -201,7 +157,8 @@ def main():
         echo0("Error: only got {}".format(locations))
         return 1
 
-    return io_csharp_to_python(locations[0], locations[1])
+    return csharp_to_python(locations[0], locations[1],
+                            conv_fn=io_csharp_to_python_file)
 
 
 if __name__ == "__main__":
