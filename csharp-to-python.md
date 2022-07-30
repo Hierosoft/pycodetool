@@ -5,7 +5,7 @@ shannoncruey's) csharp-to-python.
 The shim functions below were implemented manually in
 <https://github.com/poikilos/RetractionTowerProcessor> and the latest versions of them can
 be found there until they are implemented here.
-- [ ] add them to cc0code.py
+- [ ] add them to fxshim.py
 
 
 ## String formatting overview
@@ -184,9 +184,9 @@ error(s)
       - See string format documentation at
         <https://docs.python.org/3/library/string.html#formatspec>.
   - `n.ToString(##0.#####)`
-    should be (requires cc0code.py to be copied to dest)
+    should be (requires fxshim.py to be copied to dest)
 ```
-from cc0code import optionalD
+from fxshim import optionalD
 optionalD(5).format(n)
 # or:
 # optionalD(5, mode="%") % n
