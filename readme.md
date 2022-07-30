@@ -7,6 +7,15 @@ Code conversion tools, mostly just for removing dependencies so far.
 * Export a list of all global identifiers (after pre-processing on
   load).
 
+### Commands
+Installing the module (or installing linux-preinstall and adding
+linux-preinstall/utilities and linux-preinstall/utilities-developer) to
+the PATH) provides the following commands:
+- `changes`: Look for repos in the current directory and show what
+  changes are not yet committed (including untracked).
+- `ggrep`: Get a geany command to go to the line in the file from grep
+  (searching within file(s)). Recursively search directories by default.
+
 ### Python.NET to standard Python (framework_to_standard_python):
 Note that GUI conversion is not tested or supported, but you can try it
 the manually implement whatever is missing (or use IronPython as
