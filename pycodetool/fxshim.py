@@ -60,13 +60,13 @@ def optionalD(n, want_decimals, mode="format", name=""):
     and places aren't displayed at all if they aren't present.
 
     Create a format string that will only add decimals when necessary
-    using a calculated number and the g format token. Specify a number of places after
-    the decimal point instead of a total number of decimals. For
-    example, 11.123456 and .123456 can all be set to 5 decimals or
-    fewer (whereas usually with g, 11.123456 would only get three,
-    rounded up if next digit were 5 or higher). Also as expected, 12
-    will not have any decimal point if formatted with a format string
-    from this function.
+    using a calculated number and the g format token. Specify a number
+    of places afterthe decimal point instead of a total number of
+    decimals. For example, 11.123456 and .123456 can all be set to 5
+    decimals or fewer (whereas usually with g, 11.123456 would only get
+    three, rounded up if next digit were 5 or higher). Also as
+    expected, 12 will not have any decimal point if formatted with a
+    format string from this function.
 
     Examples:
     - optionalD(11.123456, 5).format(11.123456) yields '11.12346'
@@ -135,6 +135,7 @@ def optionalD(n, want_decimals, mode="format", name=""):
 
 def decimal_Parse(s):
     return float(s)
+
 
 def NumberToStr(n):
     '''

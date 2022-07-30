@@ -25,15 +25,14 @@ import re
 import sys
 # wsRx = re.compile(r'\s+')
 # \s+ means one or more whitespace
-
-ec_value_types = ["string"]
-ec_non_value_types = ["example", "comment", "bad_syntax", "raw"]
-
 from pycodetool import (
     echo0,
     echo1,
     echo2,
 )
+
+ec_value_types = ["string"]
+ec_non_value_types = ["example", "comment", "bad_syntax", "raw"]
 
 
 class ECLineInfo:

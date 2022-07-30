@@ -2,9 +2,6 @@
 """
 Parse data and manipulate variables.
 """
-from __future__ import print_function
-from __future__ import division
-me = "pycodetool.parsing"
 # Copyright (C) 2018-2022 Jake Gustafson
 
 # This library is free software; you can redistribute it and/or
@@ -22,7 +19,8 @@ me = "pycodetool.parsing"
 # Foundation, Inc., 51 Franklin Street, Fifth Floor,
 # Boston, MA 02110-1301 USA
 
-
+from __future__ import print_function
+from __future__ import division
 import os
 import sys
 import traceback
@@ -33,6 +31,8 @@ from pycodetool import (
     echo1,
     echo2,
 )
+me = "pycodetool.parsing"
+
 
 try:
     input = raw_input
@@ -59,6 +59,7 @@ alnum_chars = alpha_chars+digit_chars
 identifier_chars = alnum_chars+"_"
 identifier_and_dot_chars = identifier_chars+"."
 entries_modified_count = 0
+
 
 class AbstractFn:
     '''
@@ -938,7 +939,8 @@ def explode_unquoted(haystack, delimiter, get_str_i_tuple=False,
         echo2('- substring haystack[{}:]="{}"'
               ''.format(start, haystack[start:]))
         if index >= 0:
-            element = haystack[start:index].strip() if strip else haystack[start:index]
+            hs = haystack
+            element = hs[start:index].strip() if strip else hs[start:index]
             if get_str_i_tuple:
                 elements.append((element, start, index))
             else:
@@ -1073,6 +1075,7 @@ def find_which_needle(haystack, haystack_i, needles, subscript=None):
         if haystack[haystack_i:haystack_i+len(needle)] == needle:
             return i
     return -1
+
 
 quoted_slices_error = None
 
@@ -1281,9 +1284,9 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
                                 start=0,
                                 # endbefore=endbefore
                                 # ^ never end early to find comment!
-                                step=1, # forward to find comment!
-                                enclosures=None, # ignore for comment
-                                allow_quoted=False, # False for comment
+                                step=1,  # forward to find comment!
+                                enclosures=None,  # ignore for comment
+                                allow_quoted=False,  # False for comment
                                 comment_delimiters=None,
                                 # ^ None since it is the needle now
                                 allow_commented=False)
@@ -1359,8 +1362,7 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
                 if ((not allow_commented)
                         and ((here_c_del is not None)
                              or (haystack[index:index+3] == '"""')
-                             or (haystack[index:index+3] == "'''"))
-                    ):
+                             or (haystack[index:index+3] == "'''"))):
                     # TODO: handle multi-line comments?
                     break
                 elif (this_char == '"') or (this_char == "'"):
@@ -1395,7 +1397,9 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
 
 
 def find_unquoted_not_commented_not_parenthetical(haystack, needle,
-        start=0, endbefore=-1, step=1, comment_delimiters=["#"]):
+                                                  start=0, endbefore=-1,
+                                                  step=1,
+                                                  comment_delimiters=["#"]):
     '''
     This function was lost and not found in a previous commit, and may
     have never been created after used. Therefore, 2021-03-13 it was
@@ -1416,7 +1420,7 @@ def find_unquoted_not_commented_not_parenthetical(haystack, needle,
 
 
 def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
-        step=1, comment_delimiters=["#"]):
+                                step=1, comment_delimiters=["#"]):
     '''
     This function was lost and not found in a previous commit, and may
     have never been created after used. Therefore, 2021-03-13 it was
@@ -1434,8 +1438,10 @@ def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
         allow_quoted=False,
     )
 
+
 def find_unquoted_even_commented(haystack, needle, start=0,
-        endbefore=-1, step=1, comment_delimiters=["#"]):
+                                 endbefore=-1, step=1,
+                                 comment_delimiters=["#"]):
     '''
     This function was lost and not found in a previous commit, and may
     have never been created after used. Therefore, 2021-03-13 it was
