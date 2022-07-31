@@ -2,7 +2,7 @@
 
 import sys
 
-from pycodetool.csharptopython import (
+from pycodetool.io_csharptopython import (
     main,
 )
 
