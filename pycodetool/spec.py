@@ -6,7 +6,7 @@ MODULE_DIR = os.path.dirname(os.path.realpath(__file__))
 REPO_DIR = os.path.dirname(MODULE_DIR)
 DATA_DIR = os.path.join(REPO_DIR, "doc", "development")
 # TODO: ^ change to os.path.join(MODULE_DIR, "data")
-CS_SPEC_PATH = os.path.join(DATA_DIR, "csharp-spec-5.0-grammar.html")
+CS_SPEC_PATH = os.path.join(DATA_DIR, "csharp-spec-5.0-grammar.txt")
 grammar_tree = None
 EXAMPLE_HTML = '''<!-- p. 476-510 (each separated by two newlines) from <a href="https://www.microsoft.com/en-us/download/confirmation.aspx?id=7029">C# Language Specification 5.0</a> by Microsoft -->
 <!--set page=476-->
@@ -215,14 +215,14 @@ def is_in_charset(needle, charset):
     return needle in charset['characters']
 
 
-def count_specdef_lines():
-    count = 0
+def get_tree_line_n_max():
+    result = 0
     for section, specdefs in grammar_tree.items():
         for symbol, specdef in specdefs.items():
             line_n = specdef['line_n']
-            if line_n > count:
-                count = line_n  # correct since starting at 1
-    return count
+            if line_n > result:
+                result = line_n
+    return result
 
 
 def get_specdef_at_line(index, no_exception=True):
@@ -238,7 +238,7 @@ def get_specdef_at_line(index, no_exception=True):
 
 
 def dump_specdefs():
-    count = count_specdef_lines()
+    count = get_tree_line_n_max() + 1
     section = None
     prev_page_n = None
     page_n = None
@@ -249,7 +249,7 @@ def dump_specdefs():
         page_n = specdef.get('page_n')
         if page_n is not None:
             if page_n != prev_page_n:
-                # echo0("page {} -> {}".format(prev_page_n, page_n))
+                # echo1("page {} -> {}".format(prev_page_n, page_n))
                 print("")
 
         if (section is None) or (specdef['section'] != section):
@@ -370,8 +370,9 @@ def read_spec(path):
                     continue
             if page_n is not None:
                 if page_n != prev_page_n:
-                    echo0("page {} -> {}".format(prev_page_n, page_n))
+                    echo1("page {} -> {}".format(prev_page_n, page_n))
             if "</code>" in line:
+                # deprecated HTML format (See EXAMPLE_HTML variable)
                 echo0(to_syntax_error(path, line_n,
                                       "</code> ended (OK presumably)."))
                 break
@@ -395,7 +396,8 @@ def read_spec(path):
                     grammar_tree[section] = {}
                 specdefs = grammar_tree[section]
             elif depth == 1:
-                specdef = new_specdef(section, line, path, line_n, page_n=page_n)
+                specdef = new_specdef(section, line, path, line_n,
+                                      page_n=page_n)
                 symbol = specdef['symbol']
                 if symbol in specdefs:
                     oldN = specdefs[symbol]['line_n']
