@@ -8,6 +8,15 @@ DATA_DIR = os.path.join(REPO_DIR, "doc", "development")
 # TODO: ^ change to os.path.join(MODULE_DIR, "data")
 CS_SPEC_PATH = os.path.join(DATA_DIR, "csharp-spec-5.0-grammar.html")
 grammar_tree = None
+EXAMPLE_HTML = '''<!-- p. 476-510 (each separated by two newlines) from <a href="https://www.microsoft.com/en-us/download/confirmation.aspx?id=7029">C# Language Specification 5.0</a> by Microsoft -->
+<!--set page=476-->
+<pre>
+<code>
+</code>
+</pre>
+'''
+# ^ deprecated HTML grammar
+#   (where BNF lines are between <code> and </code>)
 
 try:
     import pycodetool
@@ -28,6 +37,8 @@ except ImportError as ex:
 
 from pycodetool import (
     echo0,
+    echo1,
+    echo2,
     to_syntax_error,
     raise_SyntaxError,
     echo_SyntaxWarning,
@@ -55,13 +66,15 @@ neg_charset_opener = "Any character except "
 last_path = None
 
 
-def new_specdef(section, line, path, lineN, col=None):
+def new_specdef(section, line, path, line_n, col=None, page_n=None):
     name = None
     positive_flag = ": one of"
     specdef = {
         'section': section,
-        'line_num': lineN,
+        'line_n': line_n,
     }
+    if page_n is not None:
+        specdef['page_n'] = page_n
     if line.endswith(positive_flag):
         specdef['positive'] = True
         specdef['is_value_list'] = True
@@ -75,7 +88,7 @@ def new_specdef(section, line, path, lineN, col=None):
     else:
         raise_SyntaxError(
             path,
-            lineN,
+            line_n,
             ('new_specdef line must end with ":" or "{}" but got "{}"'
              ''.format(positive_flag, line)),
             col=col,
@@ -83,7 +96,7 @@ def new_specdef(section, line, path, lineN, col=None):
     if name != name.rstrip():
         raise_SyntaxError(
             path,
-            lineN,
+            line_n,
             'new_specdef line has an unexpected space before ":"',
             col=col,
         )
@@ -91,17 +104,17 @@ def new_specdef(section, line, path, lineN, col=None):
     return specdef
 
 
-def is_unicode_char(statement, lineN=None):
+def is_unicode_char(statement, line_n=None):
     c, i = to_unicode_char(statement, no_exception=True)
     if c is not None:
         return True
     return False
 
 
-def to_unicode_char(statement, no_exception=False, lineN=None):
+def to_unicode_char(statement, no_exception=False, line_n=None):
     '''
     Keyword arguments:
-    lineN -- the line number in the source code that caused the error.
+    line_n -- the line number in the source code that caused the error.
     no_exception -- return None instead of raising an exception if not
         a unicode character specifier (but still raise an exception if
         is one that isn't in the right format).
@@ -117,7 +130,7 @@ def to_unicode_char(statement, no_exception=False, lineN=None):
         else:
             raise_SyntaxError(
                 path,
-                lineN,
+                line_n,
                 ('A unicode character should start',
                  ' with "{}" in human-readable spec'
                  ' format.'.format(opener)),
@@ -125,14 +138,14 @@ def to_unicode_char(statement, no_exception=False, lineN=None):
             )
     start = openerI + len(opener)
     closer = " )"
-    closerI = statement.find(closer, start=start)
+    closerI = statement.find(closer, start)
     if not statement.endswith(")"):
         if no_exception:
             return None, -1
         else:
             raise_SyntaxError(
                 path,
-                lineN,
+                line_n,
                 ('A unicode character starting',
                  ' with "{}" should end'
                  ' with "{}" in human-readable spec'
@@ -141,7 +154,7 @@ def to_unicode_char(statement, no_exception=False, lineN=None):
             )
     quad = statement[start:closerI]
     if len(quad) != 4:
-        raise_SyntaxError(path, lineN,
+        raise_SyntaxError(path, line_n,
                           ('A unicode character starting',
                            ' with "{}" and ending'
                            ' with "{}" should be 4 hex characters'
@@ -152,7 +165,7 @@ def to_unicode_char(statement, no_exception=False, lineN=None):
     return ('\\u{}'.format(quad).decode('unicode_escape'), openerI)
 
 
-def parse_spec_list(statement, path, lineN, col=None):
+def parse_spec_list(statement, path, line_n, col=None):
     parts = statement.split(",")
     for i in range(len(parts)):
         parts[i] = parts[i].strip()
@@ -164,7 +177,7 @@ def parse_spec_list(statement, path, lineN, col=None):
         else:
             raise_SyntaxError(
                 path,
-                lineN,
+                line_n,
                 ('The list is in an unknown format'
                  ' (expected "and " or "or " before "{}")'
                  ''.format(parts[-1])),
@@ -176,11 +189,11 @@ def parse_spec_list(statement, path, lineN, col=None):
     return parts
 
 
-def new_negative_charset(statement, path, lineN, col=None):
+def new_negative_charset(statement, path, line_n, col=None):
     if not statement.startswith(neg_charset_opener):
         raise_SyntaxError(
             path,
-            lineN,
+            line_n,
             ('new_negative_charset statement must start with "{}"'
              ''.format(neg_charset_opener)),
             col=col,
@@ -206,17 +219,17 @@ def count_specdef_lines():
     count = 0
     for section, specdefs in grammar_tree.items():
         for symbol, specdef in specdefs.items():
-            lineN = specdef['line_num']
-            if lineN > count:
-                count = lineN  # correct since starting at 1
+            line_n = specdef['line_n']
+            if line_n > count:
+                count = line_n  # correct since starting at 1
     return count
 
 
 def get_specdef_at_line(index, no_exception=True):
     for section, specdefs in grammar_tree.items():
         for symbol, specdef in specdefs.items():
-            lineN = specdef['line_num']
-            if lineN == index:
+            line_n = specdef['line_n']
+            if line_n == index:
                 return specdef
     if no_exception is False:
         raise IndexError('There was no specdef defined on line {}'
@@ -227,15 +240,23 @@ def get_specdef_at_line(index, no_exception=True):
 def dump_specdefs():
     count = count_specdef_lines()
     section = None
+    prev_page_n = None
+    page_n = None
     for i in range(count):
         specdef = get_specdef_at_line(i)
         if specdef is None:
             continue
+        page_n = specdef.get('page_n')
+        if page_n is not None:
+            if page_n != prev_page_n:
+                # echo0("page {} -> {}".format(prev_page_n, page_n))
+                print("")
+
         if (section is None) or (specdef['section'] != section):
             section = specdef['section']
             print(section)
         suffix = ":"
-        lineN = specdef['line_num']
+        line_n = specdef['line_n']
         if specdef['is_value_list']:
             suffix = ": one of"
         print("    {}{}".format(specdef['symbol'], suffix))
@@ -244,7 +265,7 @@ def dump_specdefs():
                 raise RuntimeError(
                     to_syntax_error(
                         last_path,
-                        lineN,
+                        line_n,
                         'encoded_values on wrong spec: {}'.format(len(specdef)),
                     )
                 )
@@ -253,7 +274,7 @@ def dump_specdefs():
                 raise RuntimeError(
                     to_syntax_error(
                         last_path,
-                        lineN,
+                        line_n,
                         'got only {} encoded_values'.format(len(e_values)),
                     )
                 )
@@ -265,7 +286,7 @@ def dump_specdefs():
                 raise RuntimeError(
                     to_syntax_error(
                         last_path,
-                        lineN,
+                        line_n,
                         'got only {} encoded_options'.format(len(e_values)),
                     )
                 )
@@ -275,10 +296,11 @@ def dump_specdefs():
             raise RuntimeError(
                 to_syntax_error(
                     last_path,
-                    lineN,
+                    line_n,
                     'The members list key is unknown for: {}'.format(specdef),
                 )
             )
+        prev_page_n = page_n
 
 
 def read_spec(path):
@@ -286,9 +308,11 @@ def read_spec(path):
     # global specdefs
     global grammar_tree
     last_path = path
-    lineN = 0
+    line_n = 0
     specdef = None
     specdefs = None
+    prev_page_n = None
+    page_n = 476
     grammar_tree = {}
     with open(path, 'r') as ins:
         tab = "    "
@@ -298,20 +322,57 @@ def read_spec(path):
         started = False
         section = None
         for rawL in ins:
-            lineN += 1  # Counting numbers start at 1.
+            line_n += 1  # Counting numbers start at 1.
             line = rawL.rstrip()
             if line.strip() == "":
                 prev_depth = depth
+                if page_n is not None:
+                    page_n += 1
                 continue
             if not started:
+                # deprecated, for html (see EXAMPLE_HTML variable)
+                setter = "<!--set "
+                setterI = line.find(setter)
+                if setterI > -1:
+                    startNameI = setterI + len(setter)
+                    ender = "-->"
+                    enderI = line.find(ender, startNameI)
+                    if enderI > -1:
+                        assignment = line[startNameI:enderI]
+                        signI = assignment.find("=")
+                        if signI > -1:
+                            name = assignment[:signI]
+                            value = assignment[signI+1:]
+                            if name == "page":
+                                page_n = int(value)
+                                echo0('line {} set {}="{}"'
+                                      ''.format(line_n, name, value))
+                            else:
+                                echo0('undefined parser variable name: "{}"'
+                                      ''.format(name))
+                        else:
+                            echo2('no \'=\' in "{}"'
+                                  ''.format(line))
+                    else:
+                        echo2('no "{}" in "{}"'
+                              ''.format(ender, line))
+                else:
+                    echo2('no "{}" in "{}"'
+                          ''.format(setter, line))
+
                 # if "<code>" in line:
                 if "B.1 Lexical grammar" in line:
                     started = True
                     section = line.strip()
-                prev_depth = depth
-                continue
+                else:
+                    echo0('* ignoring text before start: "{}"'.format(line))
+                    prev_depth = depth
+                    continue
+            if page_n is not None:
+                if page_n != prev_page_n:
+                    echo0("page {} -> {}".format(prev_page_n, page_n))
             if "</code>" in line:
-                echo0(to_syntax_error(path, lineN,
+                echo0(to_syntax_error(path, line_n,
                                       "</code> ended (OK presumably)."))
                 break
             stripped = line
@@ -327,20 +388,20 @@ def read_spec(path):
                 raise SyntaxError(
                     "Only groups of 4 spaces are expected for indents."
                 )
-            if section not in grammar_tree:
-                grammar_tree[section] = {}
-            specdefs = grammar_tree[section]
 
             if depth == 0:
                 section = line.strip()
+                if section not in grammar_tree:
+                    grammar_tree[section] = {}
+                specdefs = grammar_tree[section]
             elif depth == 1:
-                specdef = new_specdef(section, line, path, lineN)
+                specdef = new_specdef(section, line, path, line_n, page_n=page_n)
                 symbol = specdef['symbol']
                 if symbol in specdefs:
-                    oldN = specdefs[symbol]['line_num']
+                    oldN = specdefs[symbol]['line_n']
                     msg = to_syntax_error(
                         path,
-                        lineN,
+                        line_n,
                         ('"{}" was already defined on line {}'
                          ''.format(symbol, oldN)),
                     )
@@ -349,7 +410,7 @@ def read_spec(path):
                         path,
                         oldN,
                         ('original definition (redefined on row {})'
-                         ''.format(lineN)),
+                         ''.format(line_n)),
                     )
                 specdefs[symbol] = specdef
                 # print(depth*"   "+symbol)
@@ -364,13 +425,14 @@ def read_spec(path):
                     raise RuntimeError(
                         to_syntax_error(
                             path,
-                            lineN,
+                            line_n,
                             ('The type of values expected is unknown.'
                              ''.format(symbol, oldN)),
                         )
                     )
                 pass
             prev_depth = depth
+            prev_page_n = page_n
 
     dump_specdefs()
 

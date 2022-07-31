@@ -1,6 +1,3 @@
-<!-- p. 476-510 (each separated by two newlines) from <a href="https://www.microsoft.com/en-us/download/confirmation.aspx?id=7029">C# Language Specification 5.0</a> by Microsoft -->
-<pre>
-<code>
 B. Grammar
     This appendix contains summaries of the lexical and syntactic grammars found in the main document, and of the
     grammar extensions for unsafe code. Grammar productions appear here in the same order that they appear in the
@@ -464,7 +461,6 @@ B.1.10 Pre-processing directives
     pp-end-region:
         whitespace<sub>opt</sub> # whitespace<sub>opt</sub> endregion pp-message
 
-
     pp-line:
         whitespace<sub>opt</sub> # whitespace<sub>opt</sub> line whitespace line-indicator pp-new-line
     line-indicator:
@@ -572,7 +568,6 @@ B.2.2 Types
     type-parameter:
         identifier
 
-
 B.2.3 Variables
     variable-reference:
         expression
@@ -591,7 +586,6 @@ B.2.4 Expressions
     primary-expression:
         primary-no-array-creation-expression
         array-creation-expression
-
 
     primary-no-array-creation-expression:
         literal
@@ -740,7 +734,6 @@ B.2.4 Expressions
         multiplicative-expression
         additive-expression + multiplicative-expression
         additive-expression – multiplicative-expression
-
 
     shift-expression:
         additive-expression
@@ -1713,5 +1706,3 @@ B.3 Grammar extensions for unsafe code
         stackalloc-initializer
     stackalloc-initializer:
         stackalloc unmanaged-type [ expression ]
-</pre>
-</code>
