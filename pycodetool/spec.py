@@ -8,7 +8,9 @@ DATA_DIR = os.path.join(REPO_DIR, "doc", "development")
 # TODO: ^ change to os.path.join(MODULE_DIR, "data")
 CS_SPEC_PATH = os.path.join(DATA_DIR, "csharp-spec-5.0-grammar.txt")
 grammar_tree = None
-EXAMPLE_HTML = '''<!-- p. 476-510 (each separated by two newlines) from <a href="https://www.microsoft.com/en-us/download/confirmation.aspx?id=7029">C# Language Specification 5.0</a> by Microsoft -->
+EXAMPLE_HTML = '''<!-- p. 476-510 (each separated by two newlines) from
+<a href="https://www.microsoft.com/en-us/download/confirmation.aspx?
+id=7029">C# Language Specification 5.0</a> by Microsoft -->
 <!--set page=476-->
 <pre>
 <code>
@@ -436,12 +438,11 @@ def read_spec(path):
             prev_depth = depth
             prev_page_n = page_n
 
-    dump_specdefs()
-
 
 def main():
     path = CS_SPEC_PATH
     read_spec(path)
+    dump_specdefs()
     return 0
 
 
