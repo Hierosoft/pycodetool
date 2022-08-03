@@ -745,6 +745,31 @@ def is_identifier_valid(val, is_dot_allowed):
     return result
 
 
+def find_slice(haystack, starter, ender):
+    '''
+    Find a pair of strings and get the slice to get or remove the string
+    (index of starter, and index of ender + 1) or return -1, -1. The
+    starter and ender can be the same character, and it must occur
+    twice to count. Otherwise, ender must occur after starter to count.
+    - If looking for multiple enclosures at once, use another function
+      such as get_operation_chunk_len instead.
+    - To get multiple slices, use another function such as
+      explode_unquoted or quoted_slices instead.
+
+    Sequential arguments:
+    haystack -- The string to slice.
+    starter -- The first needle such as "(".
+    ender -- The second needle such as ")".
+    '''
+    startI = haystack.find(starter)
+    if startI < 0:
+        return -1, -1
+    endI = haystack.find(ender, startI + 1)
+    if endI < 0:
+        return -1, -1
+    return startI, endI+1
+
+
 # formerly get_params_len
 def get_operation_chunk_len(val, start=0, step=1, line_n=None):
     result = 0
@@ -1086,6 +1111,8 @@ def get_quoted_slices_error():
 
 def which_slice(v, ranges, length=None):
     '''
+    Get the index of the slice (ranged pair) that contains v.
+
     Sequential arguments:
     v -- Check for this index within each range
     ranges -- A list of number pairs such as tuples [(start, stop),...]
@@ -1141,6 +1168,7 @@ def quoted_slices(haystack, start=0, endbefore=None,
     the tuple is 1 after the ending quote's index (as per slice
     notation). See explode_unquoted for a function that does something
     similar but also uses field delimiters.
+    - For a hard slice search excluding comments use find_slice instead.
 
     Keyword arguments:
     comment_delimiters -- Use this to specify one or more comment
