@@ -1,15 +1,10 @@
 import setuptools
 import sys
-# - For the example on which this was based, see
-#   https://github.com/poikilos/pypicolcd/blob/master/setup.py
-# - For nose, see https://github.com/poikilos/mgep/blob/master/setup.py
-# - For the most direct ancestor of this file, see
-#   https://github.com/poikilos/nopackage
+import os
 
-python_mr = sys.version_info.major
 versionedModule = {}
 versionedModule['urllib'] = 'urllib'
-if python_mr == 2:
+if sys.version_info.major < 3:
     versionedModule['urllib'] = 'urllib2'
 
 install_requires = []

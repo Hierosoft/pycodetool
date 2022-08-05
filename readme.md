@@ -79,5 +79,18 @@ See also https://github.com/poikilos/PythonCodeTranslators/issues
 
 ## Developer Notes
 
+### Documentation
+- https://stackoverflow.com/questions/70730966/recognizing-multi-line-sections-with-lark-grammar
+- https://stackoverflow.com/questions/14922242/how-to-convert-bnf-to-ebnf
+- https://stackoverflow.com/questions/23456868/c-sharp-5-0-ebnf-grammar
+- https://lark-parser.readthedocs.io/en/latest/parsers.html
+- [Add documentation for LALR and EARLY’s differences](https://github.com/lark-parser/lark/issues/732)
+- https://github.com/ligurio/lark-grammars
+  - Lua
+
+### Tools
+- https://github.com/lark-parser/ide
+  - live instance: https://www.lark-parser.org/ide/
+
 ### Testing
 Use nose such as via `python3 -m nose` in the repo directory (requires the nose package such as via `python3 -m pip install --user nose`).
