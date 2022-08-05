@@ -1,25 +1,39 @@
-# PythonCodeTranslators
-Code conversion tools, mostly just for removing dependencies so far.
+# pycodetool
+(formerly PythonCodeTranslators)
+
+Process code using Python. Search and process various languages
+using context (such as scope, comments, quotes, and escaping).
 
 
 ## Features
 ### Python parsing
-* Export a list of all global identifiers (after pre-processing on
+- Export a list of all global identifiers (after pre-processing on
   load).
+- Convert IronPython to standard Python: Remove the need for
+  framework dependencies, using automatic refactoring and shim functions
+  (see fxshim.py).
 
 ### Commands
-Installing the module (or installing linux-preinstall and adding
-linux-preinstall/utilities and linux-preinstall/utilities-developer) to
-the PATH) provides the following commands:
+Installing the module provides the following commands:
 - `changes`: Look for repos in the current directory and show what
   changes are not yet committed (including untracked).
 - `ggrep`: Get a geany command to go to the line in the file from grep
   (searching within file(s)). Recursively search directories by default.
 
-### Python.NET to standard Python (framework_to_standard_python):
+This package is used by:
+- linux-preinstall: Extract linux-preinstall and add
+  linux-preinstall/utilities and linux-preinstall/utilities-developer
+  to your environment's PATH to get the commands above without
+  installing pycodetool. For best results, place the linux-preinstall
+  and pycodetool repos in the same directory.
+
+
+### Python.NET to standard Python
+(framework_to_standard_python)
+
 Note that GUI conversion is not tested or supported, but you can try it
 the manually implement whatever is missing (or use IronPython as
-necessary and not use PythonCodeTranslators).
+necessary and not use pycodetool).
 
 #### STEP 1
 For now, you must use SharpDevelop 4.4.
@@ -69,12 +83,12 @@ This step (and this project) is only necessary if you have some sort of IronPyth
 
 
 ## Changes
-See changelog.md.
+See [changelog.md](changelog.md).
 
 
 ## Known Issues
-See also https://github.com/poikilos/PythonCodeTranslators/issues
 * (wontfix) (This is not possible to fix) Correct icsharpcode snippet converter issue where even public member variables have underscore prefix (which denotes private in python)
+* See also <https://github.com/poikilos/pycodetool/issues>
 
 
 ## Developer Notes
