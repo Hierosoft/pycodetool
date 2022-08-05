@@ -18,7 +18,12 @@ id=7029">C# Language Specification 5.0</a> by Microsoft -->
 </pre>
 '''
 # ^ deprecated HTML grammar
-#   (where BNF lines are between <code> and </code>)
+#   (where BNF lines are between <code> and </code>; I also changed
+#   " opt" to "<sub>opt</sub>")
+#   - I had added HTML to document the csharp grammar spec, but I've
+#     reverted it back to the original text pasted from the spec. For
+#     optional parts, I've changed " opt" to "_opt" (subscript notation
+#     barrowed from LaTeX).
 
 try:
     import pycodetool

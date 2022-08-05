@@ -154,7 +154,9 @@ def main():
         return 1
     if len(locations) != 2:
         usage()
-        echo0("Error: only got {}".format(locations))
+        echo0('Error: Provide a source and destination directory')
+        if len(locations) != 0:
+            echo0(' (got path(s) {}).'.format(locations))
         return 1
 
     return csharp_to_python(locations[0], locations[1],

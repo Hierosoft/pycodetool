@@ -4,12 +4,12 @@ B. Grammar
     main document.
 B.1 Lexical grammar
     input:
-        input-section<sub>opt</sub>
+        input-section_opt
     input-section:
         input-section-part
         input-section input-section-part
     input-section-part:
-        input-elements<sub>opt</sub> new-line
+        input-elements_opt new-line
         pp-directive
     input-elements:
         input-element
@@ -31,7 +31,7 @@ B.1.2 Comments
         single-line-comment
         delimited-comment
     single-line-comment:
-        // input-characters<sub>opt</sub>
+        // input-characters_opt
     input-characters:
         input-character
         input-characters input-character
@@ -45,13 +45,13 @@ B.1.2 Comments
         Line separator character ( U+2028 )
         Paragraph separator character ( U+2029 )
     delimited-comment:
-        /* delimited-comment-text<sub>opt</sub> asterisks /
+        /* delimited-comment-text_opt asterisks /
     delimited-comment-text:
         delimited-comment-section
         delimited-comment-text delimited-comment-section
     delimited-comment-section:
         /
-        asterisks<sub>opt</sub> not-slash-or-asterisk
+        asterisks_opt not-slash-or-asterisk
     asterisks:
         *
         asterisks *
@@ -84,7 +84,7 @@ B.1.6 Identifiers
         An identifier-or-keyword that is not a keyword
 
     identifier-or-keyword:
-        identifier-start-character identifier-part-characters<sub>opt</sub>
+        identifier-start-character identifier-part-characters_opt
     identifier-start-character:
         letter-character
         _ (the underscore character U+005F )
@@ -207,7 +207,7 @@ B.1.8 Literals
         decimal-integer-literal
         hexadecimal-integer-literal
     decimal-integer-literal:
-        decimal-digits integer-type-suffix<sub>opt</sub>
+        decimal-digits integer-type-suffix_opt
     decimal-digits:
         decimal-digit
         decimal-digits decimal-digit
@@ -234,8 +234,8 @@ B.1.8 Literals
         lU
         lu
     hexadecimal-integer-literal:
-        0x hex-digits integer-type-suffix<sub>opt</sub>
-        0X hex-digits integer-type-suffix<sub>opt</sub>
+        0x hex-digits integer-type-suffix_opt
+        0X hex-digits integer-type-suffix_opt
     hex-digits:
         hex-digit
         hex-digits hex-digit
@@ -261,13 +261,13 @@ B.1.8 Literals
         e
         f
     real-literal:
-        decimal-digits . decimal-digits exponent-part<sub>opt</sub> real-type-suffix<sub>opt</sub>
-        . decimal-digits exponent-part<sub>opt</sub> real-type-suffix<sub>opt</sub>
-        decimal-digits exponent-part real-type-suffix<sub>opt</sub>
+        decimal-digits . decimal-digits exponent-part_opt real-type-suffix_opt
+        . decimal-digits exponent-part_opt real-type-suffix_opt
+        decimal-digits exponent-part real-type-suffix_opt
         decimal-digits real-type-suffix
     exponent-part:
-        e sign<sub>opt</sub> decimal-digits
-        E sign<sub>opt</sub> decimal-digits
+        e sign_opt decimal-digits
+        E sign_opt decimal-digits
     sign: one of
         +
         -
@@ -301,12 +301,12 @@ B.1.8 Literals
         \t
         \v
     hexadecimal-escape-sequence:
-        \x hex-digit hex-digit<sub>opt</sub> hex-digit<sub>opt</sub> hex-digit<sub>opt</sub>
+        \x hex-digit hex-digit_opt hex-digit_opt hex-digit_opt
     string-literal:
         regular-string-literal
         verbatim-string-literal
     regular-string-literal:
-        " regular-string-literal-characters<sub>opt</sub> "
+        " regular-string-literal-characters_opt "
     regular-string-literal-characters:
         regular-string-literal-character
         regular-string-literal-characters regular-string-literal-character
@@ -318,7 +318,7 @@ B.1.8 Literals
     single-regular-string-literal-character:
         Any character except " ( U+0022 ), \ ( U+005C ), and new-line-character
     verbatim-string-literal:
-        @" verbatim-string-literal-characters<sub>opt</sub> "
+        @" verbatim-string-literal-characters_opt "
     verbatim-string-literal-characters:
         verbatim-string-literal-character
         verbatim-string-literal-characters verbatim-string-literal-character
@@ -396,45 +396,45 @@ B.1.10 Pre-processing directives
     conditional-symbol:
         Any identifier-or-keyword except true or false
     pp-expression:
-        whitespace<sub>opt</sub> pp-or-expression whitespace<sub>opt</sub>
+        whitespace_opt pp-or-expression whitespace_opt
     pp-or-expression:
         pp-and-expression
-        pp-or-expression whitespace<sub>opt</sub> || whitespace<sub>opt</sub> pp-and-expression
+        pp-or-expression whitespace_opt || whitespace_opt pp-and-expression
     pp-and-expression:
         pp-equality-expression
-        pp-and-expression whitespace<sub>opt</sub> && whitespace<sub>opt</sub> pp-equality-expression
+        pp-and-expression whitespace_opt && whitespace_opt pp-equality-expression
     pp-equality-expression:
         pp-unary-expression
-        pp-equality-expression whitespace<sub>opt</sub> == whitespace<sub>opt</sub> pp-unary-expression
-        pp-equality-expression whitespace<sub>opt</sub> != whitespace<sub>opt</sub> pp-unary-expression
+        pp-equality-expression whitespace_opt == whitespace_opt pp-unary-expression
+        pp-equality-expression whitespace_opt != whitespace_opt pp-unary-expression
     pp-unary-expression:
         pp-primary-expression
-        ! whitespace<sub>opt</sub> pp-unary-expression
+        ! whitespace_opt pp-unary-expression
     pp-primary-expression:
         true
         false
         conditional-symbol
-        ( whitespace<sub>opt</sub> pp-expression whitespace<sub>opt</sub> )
+        ( whitespace_opt pp-expression whitespace_opt )
     pp-declaration:
-        whitespace<sub>opt</sub> # whitespace<sub>opt</sub> define whitespace conditional-symbol pp-new-line
-        whitespace<sub>opt</sub> # whitespace<sub>opt</sub> undef whitespace conditional-symbol pp-new-line
+        whitespace_opt # whitespace_opt define whitespace conditional-symbol pp-new-line
+        whitespace_opt # whitespace_opt undef whitespace conditional-symbol pp-new-line
     pp-new-line:
-        whitespace<sub>opt</sub> single-line-comment<sub>opt</sub> new-line
+        whitespace_opt single-line-comment_opt new-line
     pp-conditional:
-        pp-if-section pp-elif-sections<sub>opt</sub> pp-else-section<sub>opt</sub> pp-endif
+        pp-if-section pp-elif-sections_opt pp-else-section_opt pp-endif
     pp-if-section:
-        whitespace<sub>opt</sub> # whitespace<sub>opt</sub> if whitespace pp-expression pp-new-line conditional-
-        section<sub>opt</sub>
+        whitespace_opt # whitespace_opt if whitespace pp-expression pp-new-line conditional-
+        section_opt
     pp-elif-sections:
         pp-elif-section
         pp-elif-sections pp-elif-section
     pp-elif-section:
-        whitespace<sub>opt</sub> # whitespace<sub>opt</sub> elif whitespace pp-expression pp-new-line conditional-
-        section<sub>opt</sub>
+        whitespace_opt # whitespace_opt elif whitespace pp-expression pp-new-line conditional-
+        section_opt
     pp-else-section:
-        whitespace<sub>opt</sub> # whitespace<sub>opt</sub> else pp-new-line conditional-section<sub>opt</sub>
+        whitespace_opt # whitespace_opt else pp-new-line conditional-section_opt
     pp-endif:
-        whitespace<sub>opt</sub> # whitespace<sub>opt</sub> endif pp-new-line
+        whitespace_opt # whitespace_opt endif pp-new-line
     conditional-section:
         input-section
         skipped-section
@@ -442,27 +442,27 @@ B.1.10 Pre-processing directives
         skipped-section-part
         skipped-section skipped-section-part
     skipped-section-part:
-        skipped-characters<sub>opt</sub> new-line
+        skipped-characters_opt new-line
         pp-directive
     skipped-characters:
-        whitespace<sub>opt</sub> not-number-sign input-characters<sub>opt</sub>
+        whitespace_opt not-number-sign input-characters_opt
     not-number-sign:
         Any input-character except #
     pp-diagnostic:
-        whitespace<sub>opt</sub> # whitespace<sub>opt</sub> error pp-message
-        whitespace<sub>opt</sub> # whitespace<sub>opt</sub> warning pp-message
+        whitespace_opt # whitespace_opt error pp-message
+        whitespace_opt # whitespace_opt warning pp-message
     pp-message:
         new-line
-        whitespace input-characters<sub>opt</sub> new-line
+        whitespace input-characters_opt new-line
     pp-region:
-        pp-start-region conditional-section<sub>opt</sub> pp-end-region
+        pp-start-region conditional-section_opt pp-end-region
     pp-start-region:
-        whitespace<sub>opt</sub> # whitespace<sub>opt</sub> region pp-message
+        whitespace_opt # whitespace_opt region pp-message
     pp-end-region:
-        whitespace<sub>opt</sub> # whitespace<sub>opt</sub> endregion pp-message
+        whitespace_opt # whitespace_opt endregion pp-message
 
     pp-line:
-        whitespace<sub>opt</sub> # whitespace<sub>opt</sub> line whitespace line-indicator pp-new-line
+        whitespace_opt # whitespace_opt line whitespace line-indicator pp-new-line
     line-indicator:
         decimal-digits whitespace file-name
         decimal-digits
@@ -476,7 +476,7 @@ B.1.10 Pre-processing directives
     file-name-character:
         Any input-character except "
     pp-pragma:
-        whitespace<sub>opt</sub> # whitespace<sub>opt</sub> pragma whitespace pragma-body pp-new-line
+        whitespace_opt # whitespace_opt pragma whitespace pragma-body pp-new-line
     pragma-body:
         pragma-warning-body
     pragma-warning-body:
@@ -487,7 +487,7 @@ B.1.10 Pre-processing directives
         restore
     warning-list:
         decimal-digits
-        warning-list whitespace<sub>opt</sub> , whitespace<sub>opt</sub> decimal-digits
+        warning-list whitespace_opt , whitespace_opt decimal-digits
 B.2 Syntactic grammar
 B.2.1 Basic concepts
     namespace-name:
@@ -495,8 +495,8 @@ B.2.1 Basic concepts
     type-name:
         namespace-or-type-name
     namespace-or-type-name:
-        identifier type-argument-list<sub>opt</sub>
-        namespace-or-type-name . identifier type-argument-list<sub>opt</sub>
+        identifier type-argument-list_opt
+        namespace-or-type-name . identifier type-argument-list_opt
         qualified-alias-member
 B.2.2 Types
     type:
@@ -552,7 +552,7 @@ B.2.2 Types
         rank-specifier
         rank-specifiers rank-specifier
     rank-specifier:
-        [ dim-separators<sub>opt</sub> ]
+        [ dim-separators_opt ]
     dim-separators:
         ,
         dim-separators ,
@@ -576,7 +576,7 @@ B.2.4 Expressions
         argument
         argument-list , argument
     argument:
-        argument-name<sub>opt</sub> argument-value
+        argument-name_opt argument-value
     argument-name:
         identifier :
     argument-value:
@@ -607,12 +607,12 @@ B.2.4 Expressions
         default-value-expression
         anonymous-method-expression
     simple-name:
-        identifier type-argument-list<sub>opt</sub>
+        identifier type-argument-list_opt
     parenthesized-expression:
         ( expression )
     member-access:
-        primary-expression . identifier type-argument-list<sub>opt</sub>
-        predefined-type . identifier type-argument-list<sub>opt</sub>
+        primary-expression . identifier type-argument-list_opt
+        predefined-type . identifier type-argument-list_opt
         qualified-alias-member . identifier
     predefined-type: one of
         bool
@@ -631,7 +631,7 @@ B.2.4 Expressions
         ushort
         long
     invocation-expression:
-        primary-expression ( argument-list<sub>opt</sub> )
+        primary-expression ( argument-list_opt )
     element-access:
         primary-no-array-creation-expression [ argument-list ]
     this-access:
@@ -644,13 +644,13 @@ B.2.4 Expressions
     post-decrement-expression:
         primary-expression --
     object-creation-expression:
-        new type ( argument-list<sub>opt</sub> ) object-or-collection-initializer<sub>opt</sub>
+        new type ( argument-list_opt ) object-or-collection-initializer_opt
         new type object-or-collection-initializer
     object-or-collection-initializer:
         object-initializer
         collection-initializer
     object-initializer:
-        { member-initializer-list<sub>opt</sub> }
+        { member-initializer-list_opt }
         { member-initializer-list , }
     member-initializer-list:
         member-initializer
@@ -673,7 +673,7 @@ B.2.4 Expressions
         expression
         expression-list , expression
     array-creation-expression:
-        new non-array-type [ expression-list ] rank-specifiers<sub>opt</sub> array-initializer<sub>opt</sub>
+        new non-array-type [ expression-list ] rank-specifiers_opt array-initializer_opt
         new array-type array-initializer
         new rank-specifier array-initializer
     delegate-creation-expression:
@@ -681,7 +681,7 @@ B.2.4 Expressions
     anonymous-object-creation-expression:
         new anonymous-object-initializer
     anonymous-object-initializer:
-        { member-declarator-list<sub>opt</sub> }
+        { member-declarator-list_opt }
         { member-declarator-list , }
     member-declarator-list:
         member-declarator
@@ -696,11 +696,11 @@ B.2.4 Expressions
         typeof ( unbound-type-name )
         typeof ( void )
     unbound-type-name:
-        identifier generic-dimension-specifier<sub>opt</sub>
-        identifier :: identifier generic-dimension-specifier<sub>opt</sub>
-        unbound-type-name . identifier generic-dimension-specifier<sub>opt</sub>
+        identifier generic-dimension-specifier_opt
+        identifier :: identifier generic-dimension-specifier_opt
+        unbound-type-name . identifier generic-dimension-specifier_opt
     generic-dimension-specifier:
-        < commas<sub>opt</sub> >
+        < commas_opt >
     commas:
         ,
         commas ,
@@ -781,23 +781,23 @@ B.2.4 Expressions
     lambda-expression:
         anonymous-function-signature => anonymous-function-body
     anonymous-method-expression:
-        delegate explicit-anonymous-function-signature<sub>opt</sub> block
+        delegate explicit-anonymous-function-signature_opt block
     anonymous-function-signature:
         explicit-anonymous-function-signature
         implicit-anonymous-function-signature
 
     explicit-anonymous-function-signature:
-        ( explicit-anonymous-function-parameter-list<sub>opt</sub> )
+        ( explicit-anonymous-function-parameter-list_opt )
     explicit-anonymous-function-parameter-list:
         explicit-anonymous-function-parameter
         explicit-anonymous-function-parameter-list , explicit-anonymous-function-parameter
     explicit-anonymous-function-parameter:
-        anonymous-function-parameter-modifier<sub>opt</sub> type identifier
+        anonymous-function-parameter-modifier_opt type identifier
     anonymous-function-parameter-modifier:
         ref
         out
     implicit-anonymous-function-signature:
-        ( implicit-anonymous-function-parameter-list<sub>opt</sub> )
+        ( implicit-anonymous-function-parameter-list_opt )
         implicit-anonymous-function-parameter
     implicit-anonymous-function-parameter-list:
         implicit-anonymous-function-parameter
@@ -810,9 +810,9 @@ B.2.4 Expressions
     query-expression:
         from-clause query-body
     from-clause:
-        from type<sub>opt</sub> identifier in expression
+        from type_opt identifier in expression
     query-body:
-        query-body-clauses<sub>opt</sub> select-or-group-clause query-continuation<sub>opt</sub>
+        query-body-clauses_opt select-or-group-clause query-continuation_opt
     query-body-clauses:
         query-body-clause
         query-body-clauses query-body-clause
@@ -828,10 +828,10 @@ B.2.4 Expressions
     where-clause:
         where boolean-expression
     join-clause:
-        join type<sub>opt</sub> identifier in expression on expression equals expression
+        join type_opt identifier in expression on expression equals expression
 
     join-into-clause:
-        join type<sub>opt</sub> identifier in expression on expression equals expression into identifier
+        join type_opt identifier in expression on expression equals expression into identifier
     orderby-clause:
         orderby orderings
     orderings:
@@ -839,7 +839,7 @@ B.2.4 Expressions
         orderings , ordering
     ordering:
         expression
-        ordering-direction<sub>opt</sub>
+        ordering-direction_opt
     ordering-direction:
         ascending
         descending
@@ -897,7 +897,7 @@ B.2.5 Statements
         using-statement
         yield-statement
     block:
-        { statement-list<sub>opt</sub> }
+        { statement-list_opt }
     statement-list:
         statement
         statement-list statement
@@ -949,7 +949,7 @@ B.2.5 Statements
     switch-statement:
         switch ( expression ) switch-block
     switch-block:
-        { switch-sections<sub>opt</sub> }
+        { switch-sections_opt }
     switch-sections:
         switch-section
         switch-sections switch-section
@@ -972,7 +972,7 @@ B.2.5 Statements
     do-statement:
         do embedded-statement while ( boolean-expression ) ;
     for-statement:
-        for ( for-initializer<sub>opt</sub> ; for-condition<sub>opt</sub> ; for-iterator<sub>opt</sub> ) embedded-statement
+        for ( for-initializer_opt ; for-condition_opt ; for-iterator_opt ) embedded-statement
     for-initializer:
         local-variable-declaration
         statement-expression-list
@@ -1000,22 +1000,22 @@ B.2.5 Statements
         goto case constant-expression ;
         goto default ;
     return-statement:
-        return expression<sub>opt</sub> ;
+        return expression_opt ;
     throw-statement:
-        throw expression<sub>opt</sub> ;
+        throw expression_opt ;
 
     try-statement:
         try block catch-clauses
         try block finally-clause
         try block catch-clauses finally-clause
     catch-clauses:
-        specific-catch-clauses general-catch-clause<sub>opt</sub>
-        specific-catch-clauses<sub>opt</sub> general-catch-clause
+        specific-catch-clauses general-catch-clause_opt
+        specific-catch-clauses_opt general-catch-clause
     specific-catch-clauses:
         specific-catch-clause
         specific-catch-clauses specific-catch-clause
     specific-catch-clause:
-        catch ( class-type identifier<sub>opt</sub> ) block
+        catch ( class-type identifier_opt ) block
     general-catch-clause:
         catch block
     finally-clause:
@@ -1037,14 +1037,14 @@ B.2.5 Statements
         yield break ;
 B.2.6 Namespaces
     compilation-unit:
-        extern-alias-directives<sub>opt</sub> using-directives<sub>opt</sub> global-attributes<sub>opt</sub> namespace-member-declarations<sub>opt</sub>
+        extern-alias-directives_opt using-directives_opt global-attributes_opt namespace-member-declarations_opt
     namespace-declaration:
-        namespace qualified-identifier namespace-body ;<sub>opt</sub>
+        namespace qualified-identifier namespace-body ;_opt
     qualified-identifier:
         identifier
         qualified-identifier . identifier
     namespace-body:
-        { extern-alias-directives<sub>opt</sub> using-directives<sub>opt</sub> namespace-member-declarations<sub>opt</sub> }
+        { extern-alias-directives_opt using-directives_opt namespace-member-declarations_opt }
 
     extern-alias-directives:
         extern-alias-directive
@@ -1074,10 +1074,10 @@ B.2.6 Namespaces
         enum-declaration
         delegate-declaration
     qualified-alias-member:
-        identifier :: identifier type-argument-list<sub>opt</sub>
+        identifier :: identifier type-argument-list_opt
 B.2.7 Classes
     class-declaration:
-        attributes<sub>opt</sub> class-modifiers<sub>opt</sub> partial<sub>opt</sub> class identifier type-parameter-list<sub>opt</sub> class-base<sub>opt</sub> type-parameter-constraints-clauses<sub>opt</sub> class-body ;<sub>opt</sub>
+        attributes_opt class-modifiers_opt partial_opt class identifier type-parameter-list_opt class-base_opt type-parameter-constraints-clauses_opt class-body ;_opt
     class-modifiers:
         class-modifier
         class-modifiers class-modifier
@@ -1094,8 +1094,8 @@ B.2.7 Classes
     type-parameter-list:
         < type-parameters >
     type-parameters:
-        attributes<sub>opt</sub> type-parameter
-        type-parameters , attributes<sub>opt</sub> type-parameter
+        attributes_opt type-parameter
+        type-parameters , attributes_opt type-parameter
     type-parameter:
         identifier
     class-base:
@@ -1130,7 +1130,7 @@ B.2.7 Classes
     constructor-constraint:
         new ( )
     class-body:
-        { class-member-declarations<sub>opt</sub> }
+        { class-member-declarations_opt }
     class-member-declarations:
         class-member-declaration
         class-member-declarations class-member-declaration
@@ -1148,7 +1148,7 @@ B.2.7 Classes
         static-constructor-declaration
         type-declaration
     constant-declaration:
-        attributes<sub>opt</sub> constant-modifiers<sub>opt</sub> const type constant-declarators ;
+        attributes_opt constant-modifiers_opt const type constant-declarators ;
     constant-modifiers:
         constant-modifier
         constant-modifiers constant-modifier
@@ -1164,7 +1164,7 @@ B.2.7 Classes
     constant-declarator:
         identifier = constant-expression
     field-declaration:
-        attributes<sub>opt</sub> field-modifiers<sub>opt</sub> type variable-declarators ;
+        attributes_opt field-modifiers_opt type variable-declarators ;
     field-modifiers:
         field-modifier
         field-modifiers field-modifier
@@ -1190,7 +1190,7 @@ B.2.7 Classes
     method-declaration:
         method-header method-body
     method-header:
-        attributes<sub>opt</sub> method-modifiers<sub>opt</sub> partial<sub>opt</sub> return-type member-name type-parameter-list<sub>opt</sub> ( formal-parameter-list<sub>opt</sub> ) type-parameter-constraints-clauses<sub>opt</sub>
+        attributes_opt method-modifiers_opt partial_opt return-type member-name type-parameter-list_opt ( formal-parameter-list_opt ) type-parameter-constraints-clauses_opt
     method-modifiers:
         method-modifier
         method-modifiers method-modifier
@@ -1223,7 +1223,7 @@ B.2.7 Classes
         fixed-parameter
         fixed-parameters , fixed-parameter
     fixed-parameter:
-        attributes<sub>opt</sub> parameter-modifier<sub>opt</sub> type identifier default-argument<sub>opt</sub>
+        attributes_opt parameter-modifier_opt type identifier default-argument_opt
     default-argument:
         = expression
 
@@ -1232,9 +1232,9 @@ B.2.7 Classes
         out
         this
     parameter-array:
-        attributes<sub>opt</sub> params array-type identifier
+        attributes_opt params array-type identifier
     property-declaration:
-        attributes<sub>opt</sub> property-modifiers<sub>opt</sub> type member-name { accessor-declarations }
+        attributes_opt property-modifiers_opt type member-name { accessor-declarations }
     property-modifiers:
         property-modifier
         property-modifiers property-modifier
@@ -1254,12 +1254,12 @@ B.2.7 Classes
         identifier
         interface-type . identifier
     accessor-declarations:
-        get-accessor-declaration set-accessor-declaration<sub>opt</sub>
-        set-accessor-declaration get-accessor-declaration<sub>opt</sub>
+        get-accessor-declaration set-accessor-declaration_opt
+        set-accessor-declaration get-accessor-declaration_opt
     get-accessor-declaration:
-        attributes<sub>opt</sub> accessor-modifier<sub>opt</sub> get accessor-body
+        attributes_opt accessor-modifier_opt get accessor-body
     set-accessor-declaration:
-        attributes<sub>opt</sub> accessor-modifier<sub>opt</sub> set accessor-body
+        attributes_opt accessor-modifier_opt set accessor-body
     accessor-modifier:
         protected
         internal
@@ -1270,8 +1270,8 @@ B.2.7 Classes
         block
         ;
     event-declaration:
-        attributes<sub>opt</sub> event-modifiers<sub>opt</sub> event type variable-declarators ;
-        attributes<sub>opt</sub> event-modifiers<sub>opt</sub> event type member-name { event-accessor-declarations }
+        attributes_opt event-modifiers_opt event type variable-declarators ;
+        attributes_opt event-modifiers_opt event type member-name { event-accessor-declarations }
 
     event-modifiers:
         event-modifier
@@ -1292,11 +1292,11 @@ B.2.7 Classes
         add-accessor-declaration remove-accessor-declaration
         remove-accessor-declaration add-accessor-declaration
     add-accessor-declaration:
-        attributes<sub>opt</sub> add block
+        attributes_opt add block
     remove-accessor-declaration:
-        attributes<sub>opt</sub> remove block
+        attributes_opt remove block
     indexer-declaration:
-        attributes<sub>opt</sub> indexer-modifiers<sub>opt</sub> indexer-declarator { accessor-declarations }
+        attributes_opt indexer-modifiers_opt indexer-declarator { accessor-declarations }
     indexer-modifiers:
         indexer-modifier
         indexer-modifiers indexer-modifier
@@ -1315,7 +1315,7 @@ B.2.7 Classes
         type this [ formal-parameter-list ]
         type interface-type . this [ formal-parameter-list ]
     operator-declaration:
-        attributes<sub>opt</sub> operator-modifiers operator-declarator operator-body
+        attributes_opt operator-modifiers operator-declarator operator-body
     operator-modifiers:
         operator-modifier
         operator-modifiers operator-modifier
@@ -1365,7 +1365,7 @@ B.2.7 Classes
         block
         ;
     constructor-declaration:
-        attributes<sub>opt</sub> constructor-modifiers<sub>opt</sub> constructor-declarator constructor-body
+        attributes_opt constructor-modifiers_opt constructor-declarator constructor-body
     constructor-modifiers:
         constructor-modifier
         constructor-modifiers constructor-modifier
@@ -1377,29 +1377,29 @@ B.2.7 Classes
         private
         extern
     constructor-declarator:
-        identifier ( formal-parameter-list<sub>opt</sub> ) constructor-initializer<sub>opt</sub>
+        identifier ( formal-parameter-list_opt ) constructor-initializer_opt
     constructor-initializer:
-        : base ( argument-list<sub>opt</sub> )
-        : this ( argument-list<sub>opt</sub> )
+        : base ( argument-list_opt )
+        : this ( argument-list_opt )
     constructor-body:
         block
         ;
     static-constructor-declaration:
-        attributes<sub>opt</sub> static-constructor-modifiers identifier ( ) static-constructor-body
+        attributes_opt static-constructor-modifiers identifier ( ) static-constructor-body
     static-constructor-modifiers:
-        extern<sub>opt</sub> static
-        static extern<sub>opt</sub>
+        extern_opt static
+        static extern_opt
     static-constructor-body:
         block
         ;
     destructor-declaration:
-        attributes<sub>opt</sub> extern<sub>opt</sub> ~ identifier ( ) destructor-body
+        attributes_opt extern_opt ~ identifier ( ) destructor-body
     destructor-body:
         block
         ;
 B.2.8 Structs
     struct-declaration:
-        attributes<sub>opt</sub> struct-modifiers<sub>opt</sub> partial<sub>opt</sub> struct identifier type-parameter-list<sub>opt</sub> struct-interfaces<sub>opt</sub> type-parameter-constraints-clauses<sub>opt</sub> struct-body ;<sub>opt</sub>
+        attributes_opt struct-modifiers_opt partial_opt struct identifier type-parameter-list_opt struct-interfaces_opt type-parameter-constraints-clauses_opt struct-body ;_opt
     struct-modifiers:
         struct-modifier
         struct-modifiers struct-modifier
@@ -1412,7 +1412,7 @@ B.2.8 Structs
     struct-interfaces:
         : interface-type-list
     struct-body:
-        { struct-member-declarations<sub>opt</sub> }
+        { struct-member-declarations_opt }
 
     struct-member-declarations:
         struct-member-declaration
@@ -1437,12 +1437,12 @@ B.2.9 Arrays
         rank-specifier
         rank-specifiers rank-specifier
     rank-specifier:
-        [ dim-separators<sub>opt</sub> ]
+        [ dim-separators_opt ]
     dim-separators:
         ,
         dim-separators ,
     array-initializer:
-        { variable-initializer-list<sub>opt</sub> }
+        { variable-initializer-list_opt }
         { variable-initializer-list , }
     variable-initializer-list:
         variable-initializer
@@ -1452,7 +1452,7 @@ B.2.9 Arrays
         array-initializer
 B.2.10 Interfaces
     interface-declaration:
-        attributes<sub>opt</sub> interface-modifiers<sub>opt</sub> partial<sub>opt</sub> interface identifier variant-type-parameter-list<sub>opt</sub> interface-base<sub>opt</sub> type-parameter-constraints-clauses<sub>opt</sub> interface-body ;<sub>opt</sub>
+        attributes_opt interface-modifiers_opt partial_opt interface identifier variant-type-parameter-list_opt interface-base_opt type-parameter-constraints-clauses_opt interface-body ;_opt
     interface-modifiers:
         interface-modifier
         interface-modifiers interface-modifier
@@ -1466,15 +1466,15 @@ B.2.10 Interfaces
     variant-type-parameter-list:
         < variant-type-parameters >
     variant-type-parameters:
-        attributes<sub>opt</sub> variance-annotation<sub>opt</sub> type-parameter
-        variant-type-parameters , attributes<sub>opt</sub> variance-annotation<sub>opt</sub> type-parameter
+        attributes_opt variance-annotation_opt type-parameter
+        variant-type-parameters , attributes_opt variance-annotation_opt type-parameter
     variance-annotation:
         in
         out
     interface-base:
         : interface-type-list
     interface-body:
-        { interface-member-declarations<sub>opt</sub> }
+        { interface-member-declarations_opt }
     interface-member-declarations:
         interface-member-declaration
         interface-member-declarations interface-member-declaration
@@ -1484,27 +1484,27 @@ B.2.10 Interfaces
         interface-event-declaration
         interface-indexer-declaration
     interface-method-declaration:
-        attributes<sub>opt</sub> new<sub>opt</sub> return-type identifier type-parameter-list
-        ( formal-parameter-list<sub>opt</sub> ) type-parameter-constraints-clauses<sub>opt</sub> ;
+        attributes_opt new_opt return-type identifier type-parameter-list
+        ( formal-parameter-list_opt ) type-parameter-constraints-clauses_opt ;
     interface-property-declaration:
-        attributes<sub>opt</sub> new<sub>opt</sub> type identifier { interface-accessors }
+        attributes_opt new_opt type identifier { interface-accessors }
     interface-accessors:
-        attributes<sub>opt</sub> get ;
-        attributes<sub>opt</sub> set ;
-        attributes<sub>opt</sub> get ; attributes<sub>opt</sub> set ;
-        attributes<sub>opt</sub> set ; attributes<sub>opt</sub> get ;
+        attributes_opt get ;
+        attributes_opt set ;
+        attributes_opt get ; attributes_opt set ;
+        attributes_opt set ; attributes_opt get ;
     interface-event-declaration:
-        attributes<sub>opt</sub> new<sub>opt</sub> event type identifier ;
+        attributes_opt new_opt event type identifier ;
     interface-indexer-declaration:
-        attributes<sub>opt</sub> new<sub>opt</sub> type this [ formal-parameter-list ] { interface-accessors }
+        attributes_opt new_opt type this [ formal-parameter-list ] { interface-accessors }
 B.2.11 Enums
     enum-declaration:
-        attributes<sub>opt</sub> enum-modifiers<sub>opt</sub> enum identifier enum-base<sub>opt</sub> enum-body ;<sub>opt</sub>
+        attributes_opt enum-modifiers_opt enum identifier enum-base_opt enum-body ;_opt
 
     enum-base:
         : integral-type
     enum-body:
-        { enum-member-declarations<sub>opt</sub> }
+        { enum-member-declarations_opt }
         { enum-member-declarations , }
     enum-modifiers:
         enum-modifier
@@ -1519,11 +1519,11 @@ B.2.11 Enums
         enum-member-declaration
         enum-member-declarations , enum-member-declaration
     enum-member-declaration:
-        attributes<sub>opt</sub> identifier
-        attributes<sub>opt</sub> identifier = constant-expression
+        attributes_opt identifier
+        attributes_opt identifier = constant-expression
 B.2.12 Delegates
     delegate-declaration:
-        attributes<sub>opt</sub> delegate-modifiers<sub>opt</sub> delegate return-type identifier variant-type-parameter-list<sub>opt</sub> ( formal-parameter-list<sub>opt</sub> ) type-parameter-constraints-clauses<sub>opt</sub> ;
+        attributes_opt delegate-modifiers_opt delegate return-type identifier variant-type-parameter-list_opt ( formal-parameter-list_opt ) type-parameter-constraints-clauses_opt ;
     delegate-modifiers:
         delegate-modifier
         delegate-modifiers delegate-modifier
@@ -1554,8 +1554,8 @@ B.2.13 Attributes
         attribute-section
         attribute-sections attribute-section
     attribute-section:
-        [ attribute-target-specifier<sub>opt</sub> attribute-list ]
-        [ attribute-target-specifier<sub>opt</sub> attribute-list , ]
+        [ attribute-target-specifier_opt attribute-list ]
+        [ attribute-target-specifier_opt attribute-list , ]
     attribute-target-specifier:
         attribute-target :
     attribute-target:
@@ -1570,18 +1570,18 @@ B.2.13 Attributes
         attribute
         attribute-list , attribute
     attribute:
-        attribute-name attribute-arguments<sub>opt</sub>
+        attribute-name attribute-arguments_opt
     attribute-name:
         type-name
     attribute-arguments:
-        ( positional-argument-list<sub>opt</sub> )
+        ( positional-argument-list_opt )
         ( positional-argument-list , named-argument-list )
         ( named-argument-list )
     positional-argument-list:
         positional-argument
         positional-argument-list , positional-argument
     positional-argument:
-        argument-name<sub>opt</sub> attribute-argument-expression
+        argument-name_opt attribute-argument-expression
     named-argument-list:
         named-argument
         named-argument-list , named-argument
@@ -1625,15 +1625,15 @@ B.3 Grammar extensions for unsafe code
         ...
         unsafe
     destructor-declaration:
-        attributes<sub>opt</sub> extern<sub>opt</sub> unsafe<sub>opt</sub> ~ identifier ( ) destructor-body
-        attributes<sub>opt</sub> unsafe<sub>opt</sub> extern<sub>opt</sub> ~ identifier ( ) destructor-body
+        attributes_opt extern_opt unsafe_opt ~ identifier ( ) destructor-body
+        attributes_opt unsafe_opt extern_opt ~ identifier ( ) destructor-body
     static-constructor-modifiers:
-        extern<sub>opt</sub> unsafe<sub>opt</sub> static
-        unsafe<sub>opt</sub> extern<sub>opt</sub> static
-        extern<sub>opt</sub> static unsafe<sub>opt</sub>
-        unsafe<sub>opt</sub> static extern<sub>opt</sub>
-        static extern<sub>opt</sub> unsafe<sub>opt</sub>
-        static unsafe<sub>opt</sub> extern<sub>opt</sub>
+        extern_opt unsafe_opt static
+        unsafe_opt extern_opt static
+        extern_opt static unsafe_opt
+        unsafe_opt static extern_opt
+        static extern_opt unsafe_opt
+        static unsafe_opt extern_opt
 
     embedded-statement:
         ...
@@ -1661,7 +1661,7 @@ B.3 Grammar extensions for unsafe code
     pointer-indirection-expression:
         * unary-expression
     pointer-member-access:
-        primary-expression -> identifier type-argument-list<sub>opt</sub>
+        primary-expression -> identifier type-argument-list_opt
     pointer-element-access:
         primary-no-array-creation-expression [ expression ]
     addressof-expression:
@@ -1683,7 +1683,7 @@ B.3 Grammar extensions for unsafe code
         ...
         fixed-size-buffer-declaration
     fixed-size-buffer-declaration:
-        attributes<sub>opt</sub> fixed-size-buffer-modifiers<sub>opt</sub> fixed buffer-element-type fixed-size-buffer-declarators ;
+        attributes_opt fixed-size-buffer-modifiers_opt fixed buffer-element-type fixed-size-buffer-declarators ;
     fixed-size-buffer-modifiers:
         fixed-size-buffer-modifier
         fixed-size-buffer-modifier fixed-size-buffer-modifiers
