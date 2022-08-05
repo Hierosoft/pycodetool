@@ -14,12 +14,13 @@ if python_mr == 2:
 
 install_requires = []
 
-with open("requirements.txt", "r") as ins:
-    for rawL in ins:
-        line = rawL.strip()
-        if len(line) < 1:
-            continue
-        install_requires.append(line)
+if os.path.isfile("requirements.txt"):
+    with open("requirements.txt", "r") as ins:
+        for rawL in ins:
+            line = rawL.strip()
+            if len(line) < 1:
+                continue
+            install_requires.append(line)
 
 description = '''
 '''
