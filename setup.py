@@ -22,8 +22,9 @@ if os.path.isfile("requirements.txt"):
                 continue
             install_requires.append(line)
 
-description = '''
-'''
+description = (
+    "Parse and modify Python code."
+)
 long_description = description
 if os.path.isfile("readme.md"):
     with open("readme.md", "r") as fh:
@@ -32,7 +33,7 @@ if os.path.isfile("readme.md"):
 setuptools.setup(
     name='pycodetool',
     version='0.9.0',
-    description=("Parse and modify Python code."),
+    description=description,
     long_description=long_description,
     long_description_content_type="text/markdown",
     classifiers=[
