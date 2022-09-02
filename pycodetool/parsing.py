@@ -1631,6 +1631,144 @@ def get_cdef(path, name, lines=None):
     return v, v_n, None
 
 
+def set_cdef(path, name, value, comments=None):
+    '''
+    Set define(s) preserving spacing and comments. If the item is
+    commented, uncomment it, unless value is None.
+
+    Sequential arguments:
+    name -- (string or list/tuple of strings) Look for this value.
+        If this is a list, multiple names can be set to the same value
+        only reading and writing the file once.
+    value -- Set to this value. If None, comment the line and do nothing
+        else to it. For a blank define, set "" and the value will be
+        uncommented.
+
+    Keyword arguments:
+    comments -- (string or list/tuple of strings) Add a comment or list
+        of comments after the line. A list is multiline, while a string
+        goes at the end of the line.
+
+    Returns:
+    a list of names of names (macro symbols) that were changed.
+    '''
+    names = name
+    if (not isinstance(names, list)) and (not isinstance(names, tuple)):
+        names = [name]
+
+    comment = None
+    if (not isinstance(comments, list)) and (not isinstance(comments, tuple)):
+        if comments is not None:
+            comment = comments
+            echo1("* converting {} to list".format(comments))
+            comments = [comments]
+
+    if value is None:
+        # None forces deleting the value.
+        pass
+    elif isinstance(value, str):
+        if len(value) > 0:
+            try:
+                v = float(value)
+            except ValueError as ex:
+                echo0("Warning: Non-numerical non-quoted `{}`".format(value))
+        # else "" signifies "defined"
+    elif value is True:
+        value = "true"  # Convert to symbolic ctype
+    elif value is False:
+        value = "false"  # Convert to symbolic ctype
+    elif isinstance(value, int):
+        value = str(value)
+    elif isinstance(value, float):
+        value = str(value)
+    else:
+        raise TypeError(
+            "{} was an unexpected type: {}"
+            "".format(name, type(value).__name__)
+        )
+
+    changed_names = []
+    with open(path, 'r') as ins:
+        lines = ins.readlines()
+    for name in names:
+        v, line_n, err = get_cdef(path, name, lines=lines)
+        line_i = line_n - 1
+        # COMMENTED_DEF_WARNING is ok (using that line is safe
+        #   since the warning indicates there is no non-commented
+        #   line with the same name)
+        if line_n > -1:
+            original_line = lines[line_i]
+            if value is None:
+                if err == COMMENTED_DEF_WARNING:
+                    continue
+                line = "// " + original_line
+                lines[line_i] = line
+                changed_names.append(name)
+                echo0('* changed "{}" to "{}"'.format(original_line, line))
+                continue
+            changed_names.append(name)
+            rawL = lines[line_i]
+            indent_count = len(rawL) - len(rawL.lstrip())
+            indent = rawL[:indent_count]
+            line = rawL.strip()
+            if line.startswith("//"):
+                line = line[2:].strip()
+            parts = line.split()
+            line = indent + line
+            if parts[0] != "#define":
+                raise RuntimeError('{}:{}: expected #define'
+                                   ''.format(path, line_n))
+            original_v_i = line.find(v)
+            after_v_i = original_v_i + len(v)
+            '''
+            Normally don't use after_v_i directly, because the
+            value may have spaces (may be a macro rather than a
+            constant), but in this case it is OK since the value v
+            is reliable (found by get_cdef) so skip:
+            macro_ender = find_non_whitespace(line, comment_i-1, step=-1)
+            space_and_comment_i = macro_ender + 1
+            comment_i = line.find("//", after_v_i)
+            if comment_i < -1:
+                comment_i = len(line)
+            original_n = parts[1]
+            original_v = parts[2]
+            original_v_i = line.find(original_v)
+            after_v_i = original_v_i + len(original_v)
+            '''
+            line = line[:original_v_i] + value + line[after_v_i:]
+            lines[line_i] = line
+            if line != original_line:
+                echo0('* changed `{}` to `{}`'
+                      ''.format(original_line.strip(), line.strip()))
+                echo0("  - changed {} to {}".format(v, value))
+            if comment is not None:
+                if not comment.strip().startswith("//"):
+                    comment = "// " + comment
+                if not comment[:1].strip() == "":
+                    comment = " " + comment
+                lines[line_i] += comment
+            elif comments is not None:
+                for c_i in range(len(comments)):
+                    comment = comments[c_i]
+                    if not comment.strip().startswith("//"):
+                        comment = "// " + comment
+                    if not comment.endswith("\n"):
+                        comment += "\n"
+                    new_c_i = line_i + 1 + c_i
+                    if len(lines) <= new_c_i:
+                        lines.append(comment)
+                    elif lines[new_c_i].strip() != comment:
+                        lines.insert(new_c_i, comment)
+
+    with open(path, 'w') as outs:
+        for rawL in lines:
+            if not rawL.endswith("\n"):
+                rawL += "\n"
+            outs.write(rawL)
+
+    return changed_names
+
+
 def find_non_whitespace(haystack, start, step=1):
     if step not in [-1, 1]:
         raise ValueError("step must be -1 or 1.")
