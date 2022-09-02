@@ -14,6 +14,10 @@ for argI in range(1, len(sys.argv)):
             verbosity = 2
 
 
+def get_verbosity():
+    return verbosity
+
+
 def set_verbosity(level):
     global verbosity
     verbosity_levels = [True, False, 0, 1, 2]

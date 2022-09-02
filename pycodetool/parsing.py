@@ -30,6 +30,7 @@ from pycodetool import (
     echo0,
     echo1,
     echo2,
+    get_verbosity,
 )
 me = "pycodetool.parsing"
 
@@ -1680,7 +1681,23 @@ def set_cdef(path, name, value, comments=None):
         # None forces deleting the value.
         pass
     elif isinstance(value, str):
-        if len(value) > 0:
+        if (len(value) > 1) and value.startswith('"') and value.endswith('"'):
+            # It is a string literal.
+            pass
+        elif (len(value) > 1) and value.startswith('(') and value.endswith(')'):
+            # It is a literal formula, hopefully.
+            pass
+        elif (len(value) > 1) and value.startswith('{') and value.endswith('}'):
+            # It is a list or some other valid curly brace initialization
+            #   (hopefully).
+            pass
+        elif value in ["true", "false"]:
+            # It is a boolean literal.
+            pass
+        elif value in ["BOARD_MKS_GEN_L", "ONBOARD", "TMC2209", "A4988"]:
+            # It is a well-known constant.
+            pass
+        elif len(value) > 0:
             try:
                 v = float(value)
             except ValueError as ex:
@@ -1720,7 +1737,9 @@ def set_cdef(path, name, value, comments=None):
                     line = "// " + original_line
                     lines[line_i] = line
                     changed_names.append(name)
-                    echo0('* changed "{}" to "{}"'.format(original_line, line))
+                    print(line)
+                    if get_verbosity() > 0:
+                        echo0('* formerly "{}"'.format(original_line))
                     continue
                 changed_names.append(name)
                 rawL = lines[line_i]
@@ -1754,9 +1773,11 @@ def set_cdef(path, name, value, comments=None):
                 line = line[:original_v_i] + value + line[after_v_i:]
                 lines[line_i] = line
                 if line != original_line:
-                    echo0('* changed `{}` to `{}`'
-                          ''.format(original_line.strip(), line.strip()))
-                    echo0("  - changed {} to {}".format(v, value))
+                    print(line)
+                    if get_verbosity() > 0:
+                        echo0('* changed `{}` to `{}`'
+                              ''.format(original_line.strip(), line.strip()))
+                        echo1("  - changed {} to {}".format(v, value))
                 if comment is not None:
                     if not comment.strip().startswith("//"):
                         comment = "// " + comment
