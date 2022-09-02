@@ -370,7 +370,8 @@ def assertEqual(v1, v2, tbs=None):
     '''
     Show the values if they differ before the assertion error stops the
     program. If your test case inherits unittest.TestCase,
-    use the self.assertEqual from super instead of this.
+    use the self.assertEqual from super instead of this unless you want
+    the errors in a format this function provides.
 
     Unit tests in this module use this special assertEqual since it
     accepts an extra argument below.
@@ -1487,3 +1488,161 @@ def find_unquoted_even_commented(haystack, needle, start=0,
         allow_quoted=False,
         allow_commented=True,
     )
+
+
+def substring_after(haystack, needle):
+    needleI = haystack.find(needle)
+    if needleI < -1:
+        return None
+    return haystack[needleI+len(needle):]
+
+
+def find_after(haystack, needle):
+    needleI = haystack.find(needle)
+    if needleI < -1:
+        return -1
+    return needleI+len(needle)
+
+
+def block_uncomment_line(line, path=None, line_n=None):
+    '''
+    Keyword arguments:
+    path -- The file in which this line exists (for error tracing).
+    line_n -- The line number (starting with 1) in path that is where
+        this line originated (for error tracing).
+
+    Returns:
+    a tuple of line (string), still_commented (boolean).
+    '''
+    orig_line = line
+    still_commented = False
+    opener = "/*"
+    closer = "*/"
+    line_n = 0
+    too_many = len(orig_line)
+    try_count = 0
+    while True:
+        try_count += 1
+        if try_count >= too_many:
+            raise RuntimeError(
+                "There were too many tries"
+                " (The line `{}` wasn't handled properly"
+                " and became `{}` so far)."
+                "".format(orig_line, line)
+            )
+        line_n += 1  # Counting numbers start at 1.
+        openI = line.find(opener)
+        closeI = -1
+        if openI > -1:
+            closeI = line.find(closer, openI+len(opener))
+        inlineI = line.find("//")
+        if openI < 0 and closeI < 0 and inlineI < 0:
+            break
+        if (openI > -1) and ((inlineI < 0) or (openI < inlineI)):
+            # There's a `/*` and either there is no `//` or `/*` is before `//`.
+            if closeI > -1:
+                if closeI < openI:
+                    raise_SyntaxError(
+                        path,
+                        line_n,
+                        'block_uncomment_line only accepts lines that'
+                        'were not in a block comment, but there was a'
+                        ' {} before {} in `{}`'
+                        ''.format(opener, closer, orig_line)
+                    )
+                echo2('* removing "{}" from "{}"'
+                      ''.format(line[openI:closeI+len(closer)], line))
+                line = line[:openI] + line[closeI+len(closer):]
+            else:
+                still_commented = True
+        else:
+            # There is either no `/*` or there is one to ignore after `//`.
+            if inlineI > -1:
+                echo2('* removing "{}" from "{}"'
+                      ''.format(line[inlineI:], line))
+                line = line[:inlineI].strip()
+            else:
+                raise RuntimeError(
+                    "Uh oh, the checks shouldn't happen if there is"
+                    " neither a `/*` nor a `//` in a predictable arrangement."
+                )
+
+    return line, still_commented
+
+
+COMMENTED_DEF_WARNING = "comment"
+
+
+def get_cdef(path, name, lines=None):
+    '''
+    Get a value after "#define {}".format(name) in a file located at
+    path, and an error.
+
+    Keyword arguments:
+    lines -- If this is not None, it is assumed to be a list of lines,
+        and path is ignored.
+
+    Returns:
+    a tuple of value (string), line number (-1 if not found), and error
+    (string or None)
+    '''
+    block_commented = False
+    # Account for commented defs:
+    commented_v = None
+    commented_v_n = -1
+    v = None
+    v_n = -1
+    line_n = 0
+    if lines is None:
+        lines = []
+        with open(path, 'r') as ins:
+            for rawL in ins:
+                lines.append(rawL)
+    for rawL in lines:
+        line_n += 1  # Start at 1.
+        line = rawL.strip()
+        if not block_commented:
+            inlineI = line.find("//")
+            if line.startswith("//"):
+                parts = line[2:].strip().split()
+                if len(parts) >= 2:
+                    if (parts[0] == "#define") and (parts[1] == name):
+                        commented_v_n = line_n
+                        commented_v = substring_after(line, name).strip()
+                continue
+            if inlineI > -1:
+                line = line[:inlineI].strip()
+        else:
+            closeI = line.find("*/")
+            if closeI > -1:
+                line = line[closeI+2:]
+                # in case another comment starts on same line:
+                line, block_commented = block_uncomment_line(line)
+        if len(line) == 0:
+            continue
+        parts = line.split()  # spaces/tabs or multiple doesn't matter.
+        if (parts[0] == "#define") and (parts[1] == name):
+            v = substring_after(line, name).strip()
+            v_n = line_n
+            break
+    if v is None:
+        if commented_v is not None:
+            return commented_v, commented_v_n, COMMENTED_DEF_WARNING
+    return v, v_n, None
+
+
+def find_non_whitespace(haystack, start, step=1):
+    if step not in [-1, 1]:
+        raise ValueError("step must be -1 or 1.")
+    i = start - step
+    while True:
+        i += step
+        if step < 1:
+            if i < 0:
+                break
+        else:
+            if i >= len(haystack):
+                break
+        if haystack[i].strip() == haystack[i]:
+            return i
+    return -1
