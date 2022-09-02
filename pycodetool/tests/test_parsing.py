@@ -33,6 +33,8 @@ from pycodetool.parsing import (
     find_unquoted_not_commented_not_parenthetical,
     assertEqual,  # This is a special one with custom output.
     AbstractFn,
+    slice_is_space,
+    isnumber,
 )
 
 
@@ -374,6 +376,25 @@ class TestParsing(unittest.TestCase):
             fnStr0
         ) # It shouldn't change in this case.
     '''
+
+    def test_slice_is_space(self):
+        set_verbosity(2)
+        self.assertEqual(slice_is_space("abc ", -1, None), True)
+        self.assertEqual(slice_is_space("abc", -1, None), False)
+        self.assertEqual(slice_is_space("abc ", -2, None), False)
+        self.assertEqual(slice_is_space("abc", 3, None), False)
+        self.assertEqual(slice_is_space("abc ", 3, None), True)
+        self.assertEqual(slice_is_space("abc d", 3, 4), True)
+
+    def test_isnumber(self):
+        c_suffixes = ["f"]
+        self.assertEqual(isnumber("4.0f"), False)
+        self.assertEqual(isnumber("4.0f", suffixes=c_suffixes), True)
+        self.assertEqual(isnumber("4.0"), True)
+        self.assertEqual(isnumber("4.0"), True)
+        self.assertEqual(isnumber("4"), True)
+        self.assertEqual(isnumber("4f"), False)
+        self.assertEqual(isnumber("4f", suffixes=c_suffixes), True)
 
 
 if __name__ == "__main__":

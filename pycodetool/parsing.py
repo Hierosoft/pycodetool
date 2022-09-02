@@ -340,10 +340,82 @@ class ConfigManager:
                             save_nulls_enable=False)
 
 
+warned_suffixes = []
+
+
+def isnumber(s, suffixes=None):
+    '''
+    Unlike s.isdigit(), s.isdecimal() or even s.isnumeric(), only ensure
+    an int-like or float-like number:
+    - use float casting
+    - allow "." and "-" if appropriate (if float casting works)
+
+    This is the same as RepresentsFloat for the time being.
+
+    Keyword arguments:
+    suffixes -- Remove (only up to the first found of) these suffixes
+        before testing.
+    '''
+    if suffixes is not None:
+        if ((not isinstance(suffixes, list))
+                and (not isinstance(suffixes, tuple))):
+            raise ValueError("suffixes must be a list or tuple.")
+        for suffix in suffixes:
+            if len(suffix) > 1:
+                if suffix not in warned_suffixes:
+                    echo0('Warning: suffix "{}" was not expected'
+                          ' to have more than one character.'
+                          ''.format(suffix))
+                    warned_suffixes.append(suffix)
+            if s.endswith(suffix):
+                s = s[:-len(suffix)]
+                break
+    try:
+        f = float(s)
+    except ValueError:
+        return False
+    return True
+
+
+def slice_is_space(s, start, end):
+    '''
+    Unlike s.[start:end].isspace(), ensure there is actually the
+    expected number of spacing characters there rather than being out
+    of range.
+    '''
+    if start is None:
+        start = 0
+    if end is None:
+        end = len(s)
+    # Getting the length only works with positive numbers due to
+    # negative slice indices not being on a number line where they are
+    # in math, so calculate start_pos and end_pos:
+    start_pos = start
+    if start_pos < 0:
+        start_pos = len(s) + start
+    end_pos = end
+    if end_pos < 0:
+        end_pos = len(s) + end
+    expected_len = end_pos - start_pos
+    if len(s[start:end]) != expected_len:
+        if get_verbosity() > 1:
+            echo2('The slice "{}" ("{}"[{}:{}]) is out of range.'
+                  ' There is not enough space.'
+                  ''.format(s[start:end], s, start, end))
+        return False
+    if get_verbosity() > 1:
+        if not s[start:end].isspace():
+            echo2('The slice is not space: "{}"'
+                  ''.format(s[start:end].isspace()))
+
+    return s[start:end].isspace()
+
+
 def toPythonLiteral(v):
     '''
-    [copied to install_any.py in linux-preinstall by author]
+    [copied to nopackage by author]
     '''
+    # a.k.a. to_python_literal a.k.a. unparse_python_literal
     if v is None:
         return None
     elif v is False:
@@ -519,6 +591,9 @@ def RepresentsInt(s):
 
 
 def RepresentsFloat(s):
+    '''
+    This is the same as isnumber for now.
+    '''
     try:
         float(s)
         return True
@@ -1731,11 +1806,14 @@ def set_cdef(path, name, value, comments=None):
             #   since the warning indicates there is no non-commented
             #   line with the same name)
             if line_n > -1:
+                rawL = lines[line_i]
                 original_line = lines[line_i]
+                indent_count = len(rawL) - len(rawL.lstrip())
+                indent = rawL[:indent_count]
                 if value is None:
                     if err == COMMENTED_DEF_WARNING:
                         continue
-                    line = "// " + original_line
+                    line = indent + "// " + original_line.lstrip()
                     lines[line_i] = line
                     changed_names.append(name)
                     print(line)
@@ -1743,7 +1821,6 @@ def set_cdef(path, name, value, comments=None):
                         echo0('* formerly "{}"'.format(original_line))
                     continue
                 changed_names.append(name)
-                rawL = lines[line_i]
                 indent_count = len(rawL) - len(rawL.lstrip())
                 indent = rawL[:indent_count]
                 line = rawL.strip()
@@ -1771,7 +1848,80 @@ def set_cdef(path, name, value, comments=None):
                 original_v_i = line.find(original_v)
                 after_v_i = original_v_i + len(original_v)
                 '''
-                line = line[:original_v_i] + value + line[after_v_i:]
+
+                # TODO: use raw_cmt_indent and raw_cmt
+                raw_cmt = line[after_v_i:]
+                raw_cmt_indent_count = len(raw_cmt) - len(raw_cmt.lstrip())
+                raw_cmt_indent = raw_cmt[:raw_cmt_indent_count]
+                old_cmt = raw_cmt.lstrip()
+                this_cmt = raw_cmt
+                echo2('this_cmt="{}"'.format(this_cmt))
+                if comment is not None:
+                    this_cmt = comment
+                    if not this_cmt.strip().startswith("//"):
+                        this_cmt = "// " + this_cmt
+                    if ((not this_cmt[:1].strip() == "")
+                            and (raw_cmt_indent_count == 0)):
+                        this_cmt = " " + this_cmt
+                    # this_cmt += old_cmt
+                    # ^ doesn't have space before it
+                    this_cmt += raw_cmt
+                    # multi-line comments are later (only if comment is None)
+                    echo2('this_cmt="{}"'.format(this_cmt))
+                old_value = line[original_v_i:after_v_i]
+                if old_value != v:
+                    raise RuntimeError(
+                        "Parsing failed to identify the value in `{}`"
+                        "".format(lines[line_i])
+                    )
+                space_diff = len(value) - len(old_value)
+                this_sym = line[:original_v_i]
+                post_sym_count = len(this_sym) - len(this_sym.rstrip())
+                post_sym = this_sym[-post_sym_count:]
+                this_sym = this_sym.rstrip()
+                echo2('value="{}"'.format(value))
+                echo2('old_value="{}"'.format(old_value))
+                echo2('space_diff="{}"'.format(space_diff))
+                echo2('this_sym="{}"'.format(this_sym))
+                echo2('post_sym="{}"'.format(post_sym))
+                echo2('this_cmt="{}"'.format(this_cmt))
+                if space_diff < 0:
+                    # add spacing
+                    if value.isdigit() or isnumeric(value):
+                        post_sym += " "*(-space_diff)
+                        echo2('post_sym="{}"'.format(post_sym))
+                    else:
+                        this_cmt = " "*(-space_diff) + this_cmt
+                        echo2('this_cmt="{}"'.format(this_cmt))
+                elif space_diff > 0:
+                    # remove spacing if available (but leave at least 1)
+                    for i in range(space_diff):
+                        if value.isdigit() or isnumber(value):
+                            echo2("* remove from end of spacing on the left.")
+                            # if ((len(post_sym[-2:]) == 2)
+                            #         and (post_sym[-2:].strip() == "")):
+                            if slice_is_space(post_sym, -2, None):
+                                # Only if there are *two* spaces, remove
+                                #   one (retain a space to prevent
+                                #   mangling the code).
+                                post_sym = post_sym[:-1]
+                                echo2('* post_sym="{}"'.format(post_sym))
+                            else:
+                                break
+                        else:
+                            echo2("* remove from start of spacing on the right")
+                            # if ((len(this_cmt[:2]) == 2)
+                            #         and (this_cmt[:2].strip() == "")):
+                            if slice_is_space(post_sym, None, 2):
+                                # Only if there are *two* spaces, remove
+                                #   one (retain a space to prevent
+                                #   mangling the code).
+                                this_cmt = this_cmt[1:]
+                                echo2('* this_cmt="{}"'.format(this_cmt))
+                            else:
+                                break
+                # line = line[:original_v_i] + value + line[after_v_i:]
+                line = this_sym + post_sym + value + this_cmt
                 lines[line_i] = line
                 if line != original_line:
                     print(line)
@@ -1779,24 +1929,19 @@ def set_cdef(path, name, value, comments=None):
                         echo0('* changed `{}` to `{}`'
                               ''.format(original_line.strip(), line.strip()))
                         echo1("  - changed {} to {}".format(v, value))
-                if comment is not None:
-                    if not comment.strip().startswith("//"):
-                        comment = "// " + comment
-                    if not comment[:1].strip() == "":
-                        comment = " " + comment
-                    lines[line_i] += comment
-                elif comments is not None:
+                if (comment is None) and (comments is not None):
                     for c_i in range(len(comments)):
-                        comment = comments[c_i]
-                        if not comment.strip().startswith("//"):
-                            comment = "// " + comment
-                        if not comment.endswith("\n"):
-                            comment += "\n"
+                        this_cmt = comments[c_i]
+                        if not this_cmt.strip().startswith("//"):
+                            this_cmt = "// " + this_cmt
+                        if not this_cmt.endswith("\n"):
+                            this_cmt += "\n"
                         new_c_i = line_i + 1 + c_i
                         if len(lines) <= new_c_i:
-                            lines.append(comment)
-                        elif lines[new_c_i].strip() != comment:
-                            lines.insert(new_c_i, comment)
+                            lines.append(this_cmt)
+                        elif lines[new_c_i].strip() != this_cmt:
+                            lines.insert(new_c_i, this_cmt)
+                # raise NotImplementedError("check --debug")
 
     with open(path, 'w') as outs:
         for rawL in lines:
