@@ -1723,6 +1723,7 @@ def set_cdef(path, name, value, comments=None):
     for name in names:
         for skip in range(3):
             # GRID_MAX_POINTS_X appears 3 times in Configuration.h
+            #   in Marlin 2.0.x-bugfix branch
             #   (ok since protected under #if, #elif, #elif).
             v, line_n, err = get_cdef(path, name, lines=lines, skip=skip)
             line_i = line_n - 1
