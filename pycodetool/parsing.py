@@ -367,6 +367,10 @@ def isnumber(s, suffixes=None):
                           ' to have more than one character.'
                           ''.format(suffix))
                     warned_suffixes.append(suffix)
+            elif len(suffix.strip()) == 0:
+                raise ValueError("A suffix is blank.")
+            elif len(suffix.strip()) != len(suffix):
+                raise ValueError("A suffix mustn't contain spacing.")
             if s.endswith(suffix):
                 s = s[:-len(suffix)]
                 break
@@ -1693,6 +1697,10 @@ def get_cdef(path, name, lines=None, skip=None):
                     if (parts[0] == "#define") and (parts[1] == name):
                         commented_v_n = line_n
                         commented_v = substring_after(line, name).strip()
+                        if commented_v.startswith("//"):
+                            commented_v = ""
+                        elif "/*" in commented_v:
+                            raise NotImplementedError('"/*" in commented value')
                 continue
             if inlineI > -1:
                 line = line[:inlineI].strip()
@@ -1716,7 +1724,11 @@ def get_cdef(path, name, lines=None, skip=None):
             break
     if v is None:
         if commented_v is not None:
+            echo2('[pycodetool.parsing get_cdef] commented_v="{}"'
+                  ''.format(commented_v))
             return commented_v, commented_v_n, COMMENTED_DEF_WARNING
+    echo2('[pycodetool.parsing get_cdef] v="{}"'
+          ''.format(v))
     return v, v_n, None
 
 
@@ -1831,23 +1843,29 @@ def set_cdef(path, name, value, comments=None):
                 if parts[0] != "#define":
                     raise RuntimeError('{}:{}: expected #define'
                                        ''.format(path, line_n))
-                original_v_i = line.find(v)
+                if v == "":
+                    # if len(parts) < 3:
+                        # There is no comment.
+                    name_i = line.find(parts[1])
+                    if name_i < 0:
+                        raise RuntimeError("name wasn't found")
+                    original_v_i = name_i + len(parts[1])
+                    '''
+                    else:
+                        comment_i = line.find(parts[2])
+                        if comment_i < 0:
+                            raise RuntimeError("comment wasn't found")
+                        original_v_i = comment_i + len(parts[2])
+                    '''
+                    detected_sym_name = line[name_i:original_v_i]
+                    echo2('detected_sym_name="{}"'.format(detected_sym_name))
+                else:
+                    original_v_i = line.find(v)
+                    echo2('v="{}"'.format(v))
+                echo2("original_v_i={}".format(original_v_i))
                 after_v_i = original_v_i + len(v)
-                '''
-                Normally don't use after_v_i directly, because the
-                value may have spaces (may be a macro rather than a
-                constant), but in this case it is OK since the value v
-                is reliable (found by get_cdef) so skip:
-                macro_ender = find_non_whitespace(line, comment_i-1, step=-1)
-                space_and_comment_i = macro_ender + 1
-                comment_i = line.find("//", after_v_i)
-                if comment_i < -1:
-                    comment_i = len(line)
-                original_n = parts[1]
-                original_v = parts[2]
-                original_v_i = line.find(original_v)
-                after_v_i = original_v_i + len(original_v)
-                '''
+                echo2("after_v_i={}".format(after_v_i))
+                echo2('v="{}"'.format(v))
 
                 # TODO: use raw_cmt_indent and raw_cmt
                 raw_cmt = line[after_v_i:]
@@ -1877,7 +1895,10 @@ def set_cdef(path, name, value, comments=None):
                 space_diff = len(value) - len(old_value)
                 this_sym = line[:original_v_i]
                 post_sym_count = len(this_sym) - len(this_sym.rstrip())
-                post_sym = this_sym[-post_sym_count:]
+                post_sym = ""
+                if post_sym_count > 0:
+                    post_sym = this_sym[-post_sym_count:]
+                # else leave it blank (Don't start post_sym at 0!)
                 this_sym = this_sym.rstrip()
                 echo2('value="{}"'.format(value))
                 echo2('old_value="{}"'.format(old_value))
@@ -1887,7 +1908,7 @@ def set_cdef(path, name, value, comments=None):
                 echo2('this_cmt="{}"'.format(this_cmt))
                 if space_diff < 0:
                     # add spacing
-                    if value.isdigit() or isnumeric(value):
+                    if isnumber(value):
                         post_sym += " "*(-space_diff)
                         echo2('post_sym="{}"'.format(post_sym))
                     else:
@@ -1926,7 +1947,7 @@ def set_cdef(path, name, value, comments=None):
                 if line != original_line:
                     print(line)
                     if get_verbosity() > 0:
-                        echo0('* changed `{}` to `{}`'
+                        echo0('* changed `{}`\n  to      `{}`'
                               ''.format(original_line.strip(), line.strip()))
                         echo1("  - changed {} to {}".format(v, value))
                 if (comment is None) and (comments is not None):
@@ -1941,7 +1962,9 @@ def set_cdef(path, name, value, comments=None):
                             lines.append(this_cmt)
                         elif lines[new_c_i].strip() != this_cmt:
                             lines.insert(new_c_i, this_cmt)
-                # raise NotImplementedError("check --debug")
+
+        # if name == "PID_EDIT_MENU":
+        #     raise NotImplementedError("preserving comments") # debug only
 
     with open(path, 'w') as outs:
         for rawL in lines:
