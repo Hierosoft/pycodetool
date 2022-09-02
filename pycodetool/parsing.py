@@ -1573,7 +1573,7 @@ def block_uncomment_line(line, path=None, line_n=None):
 COMMENTED_DEF_WARNING = "comment"
 
 
-def get_cdef(path, name, lines=None):
+def get_cdef(path, name, lines=None, skip=None):
     '''
     Get a value after "#define {}".format(name) in a file located at
     path, and an error.
@@ -1581,6 +1581,8 @@ def get_cdef(path, name, lines=None):
     Keyword arguments:
     lines -- If this is not None, it is assumed to be a list of lines,
         and path is ignored.
+    skip -- Skip this many instances (increase to detect more
+        instances). The successive result will be ignored if commented.
 
     Returns:
     a tuple of value (string), line number (-1 if not found), and error
@@ -1598,13 +1600,19 @@ def get_cdef(path, name, lines=None):
         with open(path, 'r') as ins:
             for rawL in ins:
                 lines.append(rawL)
+    count = 0
     for rawL in lines:
         line_n += 1  # Start at 1.
         line = rawL.strip()
+        was_commented = False
         if not block_commented:
             inlineI = line.find("//")
             if line.startswith("//"):
                 parts = line[2:].strip().split()
+                if (skip is not None) and (skip > 0):
+                    # Do not uncomment multiple defines or an error
+                    # will occur unless enclosed in #ifdef, #elif, etc.
+                    continue
                 if len(parts) >= 2:
                     if (parts[0] == "#define") and (parts[1] == name):
                         commented_v_n = line_n
@@ -1622,6 +1630,11 @@ def get_cdef(path, name, lines=None):
             continue
         parts = line.split()  # spaces/tabs or multiple doesn't matter.
         if (parts[0] == "#define") and (parts[1] == name):
+            count += 1
+            if (skip is not None) and (count <= skip):
+                echo2("* skipped `{}`".format(rawL.strip()))
+                continue
+            echo2("* found `{}`".format(rawL.strip()))
             v = substring_after(line, name).strip()
             v_n = line_n
             break
@@ -1691,74 +1704,77 @@ def set_cdef(path, name, value, comments=None):
     with open(path, 'r') as ins:
         lines = ins.readlines()
     for name in names:
-        v, line_n, err = get_cdef(path, name, lines=lines)
-        line_i = line_n - 1
-        # COMMENTED_DEF_WARNING is ok (using that line is safe
-        #   since the warning indicates there is no non-commented
-        #   line with the same name)
-        if line_n > -1:
-            original_line = lines[line_i]
-            if value is None:
-                if err == COMMENTED_DEF_WARNING:
+        for skip in range(3):
+            # GRID_MAX_POINTS_X appears 3 times in Configuration.h
+            #   (ok since protected under #if, #elif, #elif).
+            v, line_n, err = get_cdef(path, name, lines=lines, skip=skip)
+            line_i = line_n - 1
+            # COMMENTED_DEF_WARNING is ok (using that line is safe
+            #   since the warning indicates there is no non-commented
+            #   line with the same name)
+            if line_n > -1:
+                original_line = lines[line_i]
+                if value is None:
+                    if err == COMMENTED_DEF_WARNING:
+                        continue
+                    line = "// " + original_line
+                    lines[line_i] = line
+                    changed_names.append(name)
+                    echo0('* changed "{}" to "{}"'.format(original_line, line))
                     continue
-                line = "// " + original_line
-                lines[line_i] = line
                 changed_names.append(name)
-                echo0('* changed "{}" to "{}"'.format(original_line, line))
-                continue
-            changed_names.append(name)
-            rawL = lines[line_i]
-            indent_count = len(rawL) - len(rawL.lstrip())
-            indent = rawL[:indent_count]
-            line = rawL.strip()
-            if line.startswith("//"):
-                line = line[2:].strip()
-            parts = line.split()
-            line = indent + line
-            if parts[0] != "#define":
-                raise RuntimeError('{}:{}: expected #define'
-                                   ''.format(path, line_n))
-            original_v_i = line.find(v)
-            after_v_i = original_v_i + len(v)
-            '''
-            Normally don't use after_v_i directly, because the
-            value may have spaces (may be a macro rather than a
-            constant), but in this case it is OK since the value v
-            is reliable (found by get_cdef) so skip:
-            macro_ender = find_non_whitespace(line, comment_i-1, step=-1)
-            space_and_comment_i = macro_ender + 1
-            comment_i = line.find("//", after_v_i)
-            if comment_i < -1:
-                comment_i = len(line)
-            original_n = parts[1]
-            original_v = parts[2]
-            original_v_i = line.find(original_v)
-            after_v_i = original_v_i + len(original_v)
-            '''
-            line = line[:original_v_i] + value + line[after_v_i:]
-            lines[line_i] = line
-            if line != original_line:
-                echo0('* changed `{}` to `{}`'
-                      ''.format(original_line.strip(), line.strip()))
-                echo0("  - changed {} to {}".format(v, value))
-            if comment is not None:
-                if not comment.strip().startswith("//"):
-                    comment = "// " + comment
-                if not comment[:1].strip() == "":
-                    comment = " " + comment
-                lines[line_i] += comment
-            elif comments is not None:
-                for c_i in range(len(comments)):
-                    comment = comments[c_i]
+                rawL = lines[line_i]
+                indent_count = len(rawL) - len(rawL.lstrip())
+                indent = rawL[:indent_count]
+                line = rawL.strip()
+                if line.startswith("//"):
+                    line = line[2:].strip()
+                parts = line.split()
+                line = indent + line
+                if parts[0] != "#define":
+                    raise RuntimeError('{}:{}: expected #define'
+                                       ''.format(path, line_n))
+                original_v_i = line.find(v)
+                after_v_i = original_v_i + len(v)
+                '''
+                Normally don't use after_v_i directly, because the
+                value may have spaces (may be a macro rather than a
+                constant), but in this case it is OK since the value v
+                is reliable (found by get_cdef) so skip:
+                macro_ender = find_non_whitespace(line, comment_i-1, step=-1)
+                space_and_comment_i = macro_ender + 1
+                comment_i = line.find("//", after_v_i)
+                if comment_i < -1:
+                    comment_i = len(line)
+                original_n = parts[1]
+                original_v = parts[2]
+                original_v_i = line.find(original_v)
+                after_v_i = original_v_i + len(original_v)
+                '''
+                line = line[:original_v_i] + value + line[after_v_i:]
+                lines[line_i] = line
+                if line != original_line:
+                    echo0('* changed `{}` to `{}`'
+                          ''.format(original_line.strip(), line.strip()))
+                    echo0("  - changed {} to {}".format(v, value))
+                if comment is not None:
                     if not comment.strip().startswith("//"):
                         comment = "// " + comment
-                    if not comment.endswith("\n"):
-                        comment += "\n"
-                    new_c_i = line_i + 1 + c_i
-                    if len(lines) <= new_c_i:
-                        lines.append(comment)
-                    elif lines[new_c_i].strip() != comment:
-                        lines.insert(new_c_i, comment)
+                    if not comment[:1].strip() == "":
+                        comment = " " + comment
+                    lines[line_i] += comment
+                elif comments is not None:
+                    for c_i in range(len(comments)):
+                        comment = comments[c_i]
+                        if not comment.strip().startswith("//"):
+                            comment = "// " + comment
+                        if not comment.endswith("\n"):
+                            comment += "\n"
+                        new_c_i = line_i + 1 + c_i
+                        if len(lines) <= new_c_i:
+                            lines.append(comment)
+                        elif lines[new_c_i].strip() != comment:
+                            lines.insert(new_c_i, comment)
 
     with open(path, 'w') as outs:
         for rawL in lines:
