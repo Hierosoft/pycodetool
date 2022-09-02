@@ -1943,6 +1943,8 @@ def set_cdef(path, name, value, comments=None):
                                 break
                 # line = line[:original_v_i] + value + line[after_v_i:]
                 line = this_sym + post_sym + value + this_cmt
+                line = line.rstrip()
+                # ^ Remove spacing including if added for shorter values
                 lines[line_i] = line
                 if line != original_line:
                     print(line)
@@ -1990,3 +1992,62 @@ def find_non_whitespace(haystack, start, step=1):
         if haystack[i].strip() == haystack[i]:
             return i
     return -1
+
+
+def insert_lines(path, new_lines, lines=None, after=None):
+    '''
+    Insert new_lines (value, or list/tuple of values) into file,
+    inserting newline characters automatically if not in new_lines.
+
+    Keyword arguments:
+    after -- Insert new_lines at the first instance of this flag (or if
+        None, at the start of the file).
+    lines -- If not None, use this list as the contents and ignore path
+        (and don't save except to lines).
+    '''
+    if (not isinstance(new_lines, list)) and (not isinstance(new_lines, tuple)):
+        if new_lines is None:
+            raise ValueError("new_lines is None")
+        new_lines = [new_lines]
+    do_save = False
+    if lines is None:
+        lines = []
+        with open(path, 'r') as ins:
+            for rawL in ins:
+                lines.append(rawL)
+            do_save = True
+    line_n = 0
+
+    start = -1
+
+    for rawL in lines:
+        line_n += 1  # Start at 1.
+        line = rawL.strip()
+        if (after is not None) and (len(after) > 0):
+            if after in rawL:
+                if start < 0:
+                    start = line_n
+                    # ^ Intentionally don't do -1 (put new_lines *after*
+                    #   the found line).
+    if start < 0:
+        if after is not None:
+            return False
+        else:
+            start = 0
+            echo2('[pycodetool.parsing insert_lines]'
+                  ' after was not set so inserting at line {}'
+                  ''.format(start+1))
+    insert_i = start - 1
+    echo2("start={}".format(start))
+    # raise NotImplementedError("insert if not found")
+    for i in range(len(new_lines)):
+        insert_i += 1
+        lines.insert(insert_i, new_lines[i])
+    if do_save:
+        with open(path, 'w') as outs:
+            for i in range(len(lines)):
+                rawL = lines[i]
+                if not rawL.endswith("\n"):
+                    rawL += "\n"
+                outs.write(rawL)
+    return True
