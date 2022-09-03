@@ -1731,6 +1731,8 @@ def get_cdef(path, name, lines=None, skip=None):
           ''.format(v))
     return v, v_n, None
 
+C_CONSTANTS = ['BOARD_MKS_GEN_L', 'ONBOARD', 'TMC2209', 'A4988',
+               'BOARD_BTT_SKR_V1_4_TURBO', ]
 
 def set_cdef(path, name, value, comments=None):
     '''
@@ -1781,7 +1783,7 @@ def set_cdef(path, name, value, comments=None):
         elif value in ["true", "false"]:
             # It is a boolean literal.
             pass
-        elif value in ["BOARD_MKS_GEN_L", "ONBOARD", "TMC2209", "A4988"]:
+        elif value in C_CONSTANTS:
             # It is a well-known constant.
             pass
         elif len(value) > 0:
