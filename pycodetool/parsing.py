@@ -34,6 +34,7 @@ from pycodetool import (
     echo1,
     echo2,
     get_verbosity,
+    DATA_DIR,
 )
 me = "pycodetool.parsing"
 
@@ -62,14 +63,14 @@ alnum_chars = alpha_chars+digit_chars
 identifier_chars = alnum_chars+"_"
 identifier_and_dot_chars = identifier_chars+"."
 entries_modified_count = 0
-DEFAULT_ENCODING = "UTF-8"
-# DEFAULT_ENCODING = "cp437"
-# DEFAULT_DECODING = "UTF-8"
+DEFAULT_CO = "UTF-8"
+# DEFAULT_CO = "cp437"
+# DEFAULT_DEC = "UTF-8"
 # ^ Was able to display Prusa's German spelling in Marlin's Configuration_adv.h
 #   but was not able to save correctly (meld read corrupt characters for that
 #   and the Ohms symbol)
 #   - To find the word Prusa in there if corrupt, look up "the official Pr"
-DEFAULT_DECODING = "UTF-8"
+DEFAULT_DEC = "UTF-8"
 
 class AbstractFn:
     '''
@@ -1792,6 +1793,12 @@ def _try_get_encoded_lines(path, encoding=None):
     return lines, encoding
 
 
+def read_bytes(path):
+    with open(path, 'rb') as f:
+        return(f.read())
+    return None
+
+
 def try_readlines(path, encoding=None):
     lines = None
     try:
@@ -1801,7 +1808,7 @@ def try_readlines(path, encoding=None):
     with open(path, 'rb') as f:
         f_contents = f.read()
     if encoding is None:
-        encoding = DEFAULT_DECODING
+        encoding = DEFAULT_DEC
     contents = f_contents.decode(encoding)
     if "\r\n" in contents:
         contents = contents.replace("\r\n", "\n")
@@ -1895,7 +1902,7 @@ C_CONSTANTS = ['BOARD_MKS_GEN_L', 'ONBOARD', 'TMC2209', 'A4988',
 
 
 def set_cdef(path, name, value, comments=None, lines=None,
-             encoding=DEFAULT_ENCODING):
+             encoding=DEFAULT_CO):
     '''
     Set define(s) preserving spacing and comments. If the item is
     commented, uncomment it, unless value is None.
@@ -2171,17 +2178,34 @@ def set_cdef(path, name, value, comments=None, lines=None,
     return changed_names
 
 
-def write_lines(path, lines, encoding=DEFAULT_ENCODING):
+def write_lines(path, lines, encoding=DEFAULT_CO):
     '''
     Write each line in lines to path (Only each line not
     ending with "\n" gets that added).
     '''
-    with open(path, 'w', encoding=encoding) as outs:
+    if encoding == "utf_8":
+        encoding = "utf-8"
+    echo1('write_lines...encoding="{}"...'.format(encoding))
+    # raise NotImplementedError()
+    # with open(path, 'w', encoding=encoding) as outs:
+    faux_path = os.path.join(DATA_DIR, "faux-words")
+    real_path = os.path.join(DATA_DIR, "real-words")
+    real_pairs = []
+    for sub in os.listdir(faux_path):
+        fauxStrPath = os.path.join(faux_path, sub)
+        realStrPath = os.path.join(real_path, sub)
+        fauxBytes = read_bytes(fauxStrPath)
+        realBytes = read_bytes(realStrPath)
+        real_pairs.append((fauxBytes, realBytes))
+    with open(path, 'wb') as outs:
         for rawL in lines:
             if not rawL.endswith("\n"):
                 rawL += "\n"
             try:
-                outs.write(rawL)
+                rawLB = rawL.encode(encoding)
+                for (fauxBytes, realBytes) in real_pairs:
+                    rawLB = rawLB.replace(fauxBytes, realBytes)
+                outs.write(rawLB)
             except UnicodeEncodeError:
                 echo0('\nError: Encoding "{}" failed:'.format(rawL))
                 raise
@@ -2205,7 +2229,7 @@ def find_non_whitespace(haystack, start, step=1):
 
 
 def insert_lines(path, new_lines, lines=None, after=None, before=None,
-                 encoding=DEFAULT_ENCODING):
+                 encoding=DEFAULT_CO):
     '''
     Insert new_lines (value, or list/tuple of values) into file,
     inserting newline characters automatically if not in new_lines.
@@ -2218,6 +2242,9 @@ def insert_lines(path, new_lines, lines=None, after=None, before=None,
         (or if this and before are both None, at the start of the file).
     lines -- If not None, use this list as the contents and ignore path
         (and don't save except to lines).
+    encoding -- Use this encoding when writing strings to the file. If
+        the file path is loaded an encoding can be detected from it,
+        that encoding will be used instead of the specified encoding.
 
     Returns:
     True if success, False if failed.
@@ -2242,6 +2269,8 @@ def insert_lines(path, new_lines, lines=None, after=None, before=None,
         if path is None:
             raise ValueError("You must specify a file and/or lines to modify.")
         lines, got_encoding = try_readlines(path, encoding=encoding)
+        if got_encoding is not None:
+            encoding = got_encoding
         do_save = True
     line_n = 0
 

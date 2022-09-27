@@ -2,11 +2,13 @@
 import os
 import sys
 
-MODULE_DIR = os.path.dirname(os.path.realpath(__file__))
-REPO_DIR = os.path.dirname(MODULE_DIR)
-DATA_DIR = os.path.join(REPO_DIR, "doc", "development")
+from pycodetool import (
+    MODULE_DIR,
+    REPO_DIR,
+)
+DOC_DEV_DIR = os.path.join(REPO_DIR, "doc", "development")
 # TODO: ^ change to os.path.join(MODULE_DIR, "data")
-CS_SPEC_PATH = os.path.join(DATA_DIR, "csharp-spec-5.0-grammar.txt")
+CS_SPEC_PATH = os.path.join(DOC_DEV_DIR, "csharp-spec-5.0-grammar.txt")
 grammar_tree = None
 EXAMPLE_HTML = '''<!-- p. 476-510 (each separated by two newlines) from
 <a href="https://www.microsoft.com/en-us/download/confirmation.aspx?

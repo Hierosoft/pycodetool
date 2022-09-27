@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import print_function
 import sys
+import os
 
-python_mr = sys.version_info[0]
+MODULE_DIR = os.path.dirname(os.path.realpath(__file__))
+REPO_DIR = os.path.dirname(MODULE_DIR)
+DATA_DIR = os.path.join(MODULE_DIR, "data")
 
 verbosity = 0
 for argI in range(1, len(sys.argv)):
