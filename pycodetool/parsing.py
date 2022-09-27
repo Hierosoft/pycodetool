@@ -388,7 +388,7 @@ class SourceFileInfo:
         self._unsaved_lines += changes
         return changes
 
-    def insert_cached(self, new_lines, after=None):
+    def insert_cached(self, new_lines, after=None, before=None):
         '''
         Insert C-like lines into the cache.
         For documentation see insert_lines(None, ..., lines=...).
@@ -397,7 +397,8 @@ class SourceFileInfo:
         True if success, False if failed.
         '''
         self._unsaved_lines += new_lines
-        return insert_lines(None, new_lines, after=after, lines=self._lines,
+        return insert_lines(None, new_lines, after=after, before=before,
+                            lines=self._lines,
                             encoding=self._encoding)
 
 
@@ -1915,7 +1916,8 @@ def set_cdef(path, name, value, comments=None, lines=None,
     Keyword arguments:
     comments -- (string or list/tuple of strings) Add a comment or list
         of comments after the line. A list is multiline, while a string
-        goes at the end of the line.
+        goes at the end of the line. A "//" will be prepended if not
+        present unless comments[0] == "/*" and comments[-1] == "*/".
 
     Returns:
     a list of names of names (macro symbols) that were changed.
@@ -2131,11 +2133,19 @@ def set_cdef(path, name, value, comments=None, lines=None,
                         echo0('* changed `{}`\n  to      `{}`'
                               ''.format(original_line.strip(), line.strip()))
                         echo1("  - changed {} to {}".format(v, value))
+                CMT_OPENER = "/*"
                 if (comment is None) and (comments is not None):
+                    block_start_c_i = None
+                    block_start = None
                     for c_i in range(len(comments)):
                         this_cmt = comments[c_i]
+                        if block_start_c_i is None:
+                            if this_cmt.strip().startswith(CMT_OPENER):
+                                block_start_c_i = c_i
+                                block_start = this_cmt.find(CMT_OPENER)
                         if not this_cmt.strip().startswith("//"):
-                            this_cmt = "// " + this_cmt
+                            if block_start is None:
+                                this_cmt = "// " + this_cmt
                         if not this_cmt.endswith("\n"):
                             this_cmt += "\n"
                         new_c_i = line_i + 1 + c_i
@@ -2143,6 +2153,16 @@ def set_cdef(path, name, value, comments=None, lines=None,
                             lines.append(this_cmt)
                         elif lines[new_c_i].strip() != this_cmt:
                             lines.insert(new_c_i, this_cmt)
+
+                        if block_start is not None:
+                            if block_start_c_i == c_i:
+                                if "*/" in this_cmt[block_start_c_i+len(CMT_OPENER):]:
+                                    block_start_c_i = None
+                                    block_start = None
+                            else:
+                                if "*/" in this_cmt:
+                                    block_start_c_i = None
+                                    block_start = None
 
         # if name == "PID_EDIT_MENU":
         #     raise NotImplementedError("preserving comments") # debug only
@@ -2184,7 +2204,7 @@ def find_non_whitespace(haystack, start, step=1):
     return -1
 
 
-def insert_lines(path, new_lines, lines=None, after=None,
+def insert_lines(path, new_lines, lines=None, after=None, before=None,
                  encoding=DEFAULT_ENCODING):
     '''
     Insert new_lines (value, or list/tuple of values) into file,
@@ -2192,14 +2212,27 @@ def insert_lines(path, new_lines, lines=None, after=None,
 
     Keyword arguments:
     path -- Write to this path if lines is None.
-    after -- Insert new_lines at the first instance of this flag (or if
-        None, at the start of the file).
+    after -- Insert new_lines after the first instance of this flag
+        (or if this and after are both None, at the start of the file).
+    before -- Insert new_lines before the first instance of this flag
+        (or if this and before are both None, at the start of the file).
     lines -- If not None, use this list as the contents and ignore path
         (and don't save except to lines).
 
     Returns:
     True if success, False if failed.
     '''
+    flag = None
+    move_flag = None
+    if before is not None:
+        if after is not None:
+            raise ValueError("You can only specify before or after, not both.")
+        flag = before
+        move_flag = True
+    elif after is not None:
+        flag = after
+        move_flag = False
+
     if (not isinstance(new_lines, list)) and (not isinstance(new_lines, tuple)):
         if new_lines is None:
             raise ValueError("new_lines is None")
@@ -2214,26 +2247,32 @@ def insert_lines(path, new_lines, lines=None, after=None,
 
     start = -1
 
+    line_i = -1
     for rawL in lines:
         line_n += 1  # Start at 1.
+        line_i += 1  # Start at 0.
         line = rawL.strip()
-        if (after is not None) and (len(after) > 0):
-            if after in rawL:
+        if (flag is not None) and (len(flag) > 0):
+            if flag in rawL:
                 if start < 0:
-                    start = line_n
-                    # ^ Intentionally don't do -1 (put new_lines *after*
-                    #   the found line).
+                    if move_flag:
+                        # `before` was specified, so move the flag
+                        #   value forward to make room (place new_lines
+                        #   before it).
+                        start = line_i
+                    else:
+                        start = line_i + 1
     if start < 0:
-        if after is not None:
+        if flag is not None:
             return False
         else:
             start = 0
             echo2('[pycodetool.parsing insert_lines]'
-                  ' after was not set so inserting at line {}'
+                  ' after/before was not set so inserting at line {}'
                   ''.format(start+1))
-    insert_i = start - 1
     echo2("start={}".format(start))
     # raise NotImplementedError("insert if not found")
+    insert_i = start - 1  # - 1 since incremented below
     for i in range(len(new_lines)):
         insert_i += 1
         lines.insert(insert_i, new_lines[i])
