@@ -903,7 +903,7 @@ def filter_tree(path, more_args=None, include=None, recursive=True,
                               json.dumps(trace_ignore_files.get(rig)),
                               json.dumps(igs))
                 )
-                raise ex
+                raise
             if path != checkPath:
                 echo2("- {} ({}) not {} by filter: {}"
                       "".format(checkPath, path, verb, ignore_s))

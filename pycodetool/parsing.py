@@ -25,6 +25,9 @@ import os
 import sys
 import traceback
 import copy
+# import chardet  # not built-in
+import codecs
+
 
 from pycodetool import (
     echo0,
@@ -33,7 +36,6 @@ from pycodetool import (
     get_verbosity,
 )
 me = "pycodetool.parsing"
-
 
 try:
     input = raw_input
@@ -60,7 +62,14 @@ alnum_chars = alpha_chars+digit_chars
 identifier_chars = alnum_chars+"_"
 identifier_and_dot_chars = identifier_chars+"."
 entries_modified_count = 0
-
+DEFAULT_ENCODING = "UTF-8"
+# DEFAULT_ENCODING = "cp437"
+# DEFAULT_DECODING = "UTF-8"
+# ^ Was able to display Prusa's German spelling in Marlin's Configuration_adv.h
+#   but was not able to save correctly (meld read corrupt characters for that
+#   and the Ohms symbol)
+#   - To find the word Prusa in there if corrupt, look up "the official Pr"
+DEFAULT_DECODING = "UTF-8"
 
 class AbstractFn:
     '''
@@ -340,6 +349,58 @@ class ConfigManager:
                             save_nulls_enable=False)
 
 
+class SourceFileInfo:
+    def __init__(self, repo_path, relative_path, encoding=None):
+        self.repo_path = repo_path
+        self.relative_path = relative_path
+        self._unsaved_lines = []
+        self._lines, self._encoding = try_readlines(
+            self.full_path(),
+            encoding=encoding,
+        )
+
+    def full_path(self):
+        return os.path.join(self.repo_path, self.relative_path)
+
+    def save_changes(self):
+        '''
+        Save the file only if there are lines changed by the
+        set_ or insert_ methods.
+        '''
+        count = len(self._unsaved_lines)
+        if count < 1:
+            return count
+        path = self.full_path()
+        write_lines(path, self._lines, encoding=self._encoding)
+        self._unsaved_lines = []
+        return count
+
+    def set_cached(self, name, value, comments=None):
+        '''
+        Change C-like lines in the cache.
+        For documentation see set_cdef(None, ..., lines=...).
+
+        Returns:
+        a list of lines that changed.
+        '''
+        changes = set_cdef(None, name, value, comments=comments,
+                           lines=self._lines, encoding=self._encoding)
+        self._unsaved_lines += changes
+        return changes
+
+    def insert_cached(self, new_lines, after=None):
+        '''
+        Insert C-like lines into the cache.
+        For documentation see insert_lines(None, ..., lines=...).
+
+        Returns:
+        True if success, False if failed.
+        '''
+        self._unsaved_lines += new_lines
+        return insert_lines(None, new_lines, after=after, lines=self._lines,
+                            encoding=self._encoding)
+
+
 warned_suffixes = []
 
 
@@ -466,7 +527,7 @@ def assertEqual(v1, v2, tbs=None):
                                         toPythonLiteral(v2)))
             if tbs is not None:
                 echo0("for {}".format(tbs))
-        assert(v1 is v2)
+        assert v1 is v2
     else:
         if v1 != v2:
             echo0("")
@@ -474,7 +535,7 @@ def assertEqual(v1, v2, tbs=None):
                                     toPythonLiteral(v2)))
             if tbs is not None:
                 echo0("while {}".format(tbs))
-        assert(v1 == v2)
+        assert v1 == v2
 
 
 def assertAllEqual(list1, list2, tbs=None):
@@ -1653,7 +1714,102 @@ def block_uncomment_line(line, path=None, line_n=None):
 COMMENTED_DEF_WARNING = "comment"
 
 
-def get_cdef(path, name, lines=None, skip=None):
+def _try_get_encoded_lines(path, encoding=None):
+    # This should be used
+    # instead of any function called get_lines (such as from
+    # YAMLObject_fromCodeConverter.py) or get_all_lines.
+
+    user_encoding = encoding
+    # with open(file, "rb") as ins:
+    #     rawdata = ins.read()
+    #     det_encoding = chardet.detect(rawdata)['encoding']
+    det_encoding = get_file_encoding(path)
+    echo1()
+    echo1("det_encoding={}".format(det_encoding))
+
+    lines = None
+    encodings = [None, 'iso-8859', 'utf-8', 'iso-8859-1', 'latin-1',
+                 'cp437']
+    # ^ 'cp437' is the (English) Windows Command Prompt's
+    #   (The `chcp` command shows code page 437), MIME/IANA: IBM437,
+    #   aliases "cp437, 437, csPC8CodePage437, OEM-US"
+    #   according to <https://en.wikipedia.org/wiki/Code_page_437>
+    #   2022-09-26. It correctly displays German strings (such as the
+    #   German spelling of Prusa in Configuration_adv.h in Marlin) read
+    #   using binary mode then decoded using "UTF-8".
+    if det_encoding not in encodings:
+        encodings.insert(0, det_encoding)
+    if user_encoding is not None:
+        if user_encoding in encodings:
+            encodings.remove(user_encoding)
+        encodings.insert(0, user_encoding)
+    encodingI = 0
+    ex0 = None
+    echo1('- reading "{}"'.format(path))
+    if lines is None:
+        while True:
+            encoding = encodings[encodingI]
+            try:
+                lines = []
+                if encoding is None:
+                    with open(path, 'r', encoding=encoding) as ins:
+                        for rawL in ins:
+                            '''
+                            ^ may cause "UnicodeDecodeError: 'charmap'
+                              codec can't" decode byte 0x90 in position
+                              5762: character maps to" <undefined>"
+                              such as in Marlin bugfix-2.0.x ecaebe4
+                              Configuration_adv.h (which Geany says is
+                              UTF-8).
+                            '''
+                            lines.append(rawL)
+                else:
+                    with open(path, 'r') as ins:
+                        for rawL in ins:
+                            lines.append(rawL)
+                break
+            except UnicodeDecodeError as ex:
+                if ex0 is None:
+                    ex0 = ex
+                if "decode byte" in str(ex):
+                    encodingI += 1
+                    if encodingI >= len(encodings):
+                        echo0('\nError reading "{}" (tried encoding={}):'
+                              ''.format(path, encoding))
+                        raise
+                        # raise
+                        # break
+                    else:
+                        echo1("  - encoding={} failed: {}"
+                              "".format(encoding, str(ex)))
+                        # if encoding is not None:
+                        #     raise  # for debug only
+                else:
+                    echo0('\nError reading "{}" (tried encoding={}):'
+                          ''.format(path, encoding))
+                    raise
+    return lines, encoding
+
+
+def try_readlines(path, encoding=None):
+    lines = None
+    try:
+        return _try_get_encoded_lines(path, encoding=encoding)
+    except UnicodeDecodeError as ex:
+        pass
+    with open(path, 'rb') as f:
+        f_contents = f.read()
+    if encoding is None:
+        encoding = DEFAULT_DECODING
+    contents = f_contents.decode(encoding)
+    if "\r\n" in contents:
+        contents = contents.replace("\r\n", "\n")
+    lines = contents.split("\n")
+    echo1("- had to use binary (decoded as {})".format(encoding))
+    return lines, "utf-8"
+
+
+def get_cdef(path, name, lines=None, skip=None, encoding=None):
     '''
     Get a value after "#define {}".format(name) in a file located at
     path, and an error.
@@ -1667,6 +1823,10 @@ def get_cdef(path, name, lines=None, skip=None):
     Returns:
     a tuple of value (string), line number (-1 if not found), and error
     (string or None)
+
+    Raises:
+    UnicodeDecodeError (The implied call to readline in the line iterator
+      raises the error itself).
     '''
     block_commented = False
     # Account for commented defs:
@@ -1676,10 +1836,7 @@ def get_cdef(path, name, lines=None, skip=None):
     v_n = -1
     line_n = 0
     if lines is None:
-        lines = []
-        with open(path, 'r') as ins:
-            for rawL in ins:
-                lines.append(rawL)
+        lines, got_encoding = try_readlines(path, encoding=encoding)
     count = 0
     for rawL in lines:
         line_n += 1  # Start at 1.
@@ -1731,21 +1888,29 @@ def get_cdef(path, name, lines=None, skip=None):
           ''.format(v))
     return v, v_n, None
 
+
 C_CONSTANTS = ['BOARD_MKS_GEN_L', 'ONBOARD', 'TMC2209', 'A4988',
                'BOARD_BTT_SKR_V1_4_TURBO', ]
 
-def set_cdef(path, name, value, comments=None):
+
+def set_cdef(path, name, value, comments=None, lines=None,
+             encoding=DEFAULT_ENCODING):
     '''
     Set define(s) preserving spacing and comments. If the item is
     commented, uncomment it, unless value is None.
 
     Sequential arguments:
+    path -- the path of the file to read and write (Can be None if using
+        lines and you dont want to write to the file) if lines is
+        None.
     name -- (string or list/tuple of strings) Look for this value.
         If this is a list, multiple names can be set to the same value
         only reading and writing the file once.
     value -- Set to this value. If None, comment the line and do nothing
         else to it. For a blank define, set "" and the value will be
         uncommented.
+    lines -- Provide a list of lines. If path is None, the file will
+        not be saved.
 
     Keyword arguments:
     comments -- (string or list/tuple of strings) Add a comment or list
@@ -1767,7 +1932,7 @@ def set_cdef(path, name, value, comments=None):
             comments = [comments]
 
     if value is None:
-        # None forces deleting the value.
+        # None forces removing (commenting out) the value further down.
         pass
     elif isinstance(value, str):
         if (len(value) > 1) and value.startswith('"') and value.endswith('"'):
@@ -1806,9 +1971,21 @@ def set_cdef(path, name, value, comments=None):
             "".format(name, type(value).__name__)
         )
 
+    do_save = False
     changed_names = []
-    with open(path, 'r') as ins:
-        lines = ins.readlines()
+    if lines is None:
+        if path is None:
+            raise ValueError("You must specify a file and/or lines to modify.")
+        # with open(path, 'r') as ins:
+            # lines = ins.readlines()
+            '''
+            ^ readlines may cause "UnicodeDecodeError: 'charmap' codec
+              can't decode byte 0x90 in position 5762: character maps to
+              <undefined>".
+            '''
+        lines, got_encoding = try_readlines(path, encoding=encoding)
+        do_save = True
+
     for name in names:
         for skip in range(3):
             # GRID_MAX_POINTS_X appears 3 times in Configuration.h
@@ -1847,7 +2024,7 @@ def set_cdef(path, name, value, comments=None):
                                        ''.format(path, line_n))
                 if v == "":
                     # if len(parts) < 3:
-                        # There is no comment.
+                    #   pass # There is no comment.
                     name_i = line.find(parts[1])
                     if name_i < 0:
                         raise RuntimeError("name wasn't found")
@@ -1969,14 +2146,25 @@ def set_cdef(path, name, value, comments=None):
 
         # if name == "PID_EDIT_MENU":
         #     raise NotImplementedError("preserving comments") # debug only
+    if do_save:
+        write_lines(path, lines, encoding=encoding)
+    return changed_names
 
-    with open(path, 'w') as outs:
+
+def write_lines(path, lines, encoding=DEFAULT_ENCODING):
+    '''
+    Write each line in lines to path (Only each line not
+    ending with "\n" gets that added).
+    '''
+    with open(path, 'w', encoding=encoding) as outs:
         for rawL in lines:
             if not rawL.endswith("\n"):
                 rawL += "\n"
-            outs.write(rawL)
-
-    return changed_names
+            try:
+                outs.write(rawL)
+            except UnicodeEncodeError:
+                echo0('\nError: Encoding "{}" failed:'.format(rawL))
+                raise
 
 
 def find_non_whitespace(haystack, start, step=1):
@@ -1996,16 +2184,21 @@ def find_non_whitespace(haystack, start, step=1):
     return -1
 
 
-def insert_lines(path, new_lines, lines=None, after=None):
+def insert_lines(path, new_lines, lines=None, after=None,
+                 encoding=DEFAULT_ENCODING):
     '''
     Insert new_lines (value, or list/tuple of values) into file,
     inserting newline characters automatically if not in new_lines.
 
     Keyword arguments:
+    path -- Write to this path if lines is None.
     after -- Insert new_lines at the first instance of this flag (or if
         None, at the start of the file).
     lines -- If not None, use this list as the contents and ignore path
         (and don't save except to lines).
+
+    Returns:
+    True if success, False if failed.
     '''
     if (not isinstance(new_lines, list)) and (not isinstance(new_lines, tuple)):
         if new_lines is None:
@@ -2013,11 +2206,10 @@ def insert_lines(path, new_lines, lines=None, after=None):
         new_lines = [new_lines]
     do_save = False
     if lines is None:
-        lines = []
-        with open(path, 'r') as ins:
-            for rawL in ins:
-                lines.append(rawL)
-            do_save = True
+        if path is None:
+            raise ValueError("You must specify a file and/or lines to modify.")
+        lines, got_encoding = try_readlines(path, encoding=encoding)
+        do_save = True
     line_n = 0
 
     start = -1
@@ -2046,10 +2238,73 @@ def insert_lines(path, new_lines, lines=None, after=None):
         insert_i += 1
         lines.insert(insert_i, new_lines[i])
     if do_save:
-        with open(path, 'w') as outs:
-            for i in range(len(lines)):
-                rawL = lines[i]
-                if not rawL.endswith("\n"):
-                    rawL += "\n"
-                outs.write(rawL)
+        write_lines(path, lines, encoding=encoding)
     return True
+
+
+def get_file_bom_encoding(filename):
+    # from <https://stackoverflow.com/a/44405580>
+    with open(filename, 'rb') as openfileobject:
+        line = str(openfileobject.readline())
+        if line[2:14] == str(codecs.BOM_UTF8).split("'")[1]:
+            return 'utf_8'
+        if line[2:10] == str(codecs.BOM_UTF16_BE).split("'")[1]:
+            return 'utf_16'
+        if line[2:10] == str(codecs.BOM_UTF16_LE).split("'")[1]:
+            return 'utf_16'
+        if line[2:18] == str(codecs.BOM_UTF32_BE).split("'")[1]:
+            return 'utf_32'
+        if line[2:18] == str(codecs.BOM_UTF32_LE).split("'")[1]:
+            return 'utf_32'
+    return ''
+
+
+def get_all_file_encodings(filename):
+    # from <https://stackoverflow.com/a/44405580>
+    encoding_list = []
+    encodings = ('utf_8', 'utf_16', 'utf_16_le', 'utf_16_be',
+                 'utf_32', 'utf_32_be', 'utf_32_le',
+                 'cp850', 'cp437', 'cp852', 'cp1252', 'cp1250', 'ascii',
+                 'utf_8_sig', 'big5', 'big5hkscs', 'cp037', 'cp424', 'cp500',
+                 'cp720', 'cp737', 'cp775', 'cp855', 'cp856', 'cp857',
+                 'cp858', 'cp860', 'cp861', 'cp862', 'cp863', 'cp864',
+                 'cp865', 'cp866', 'cp869', 'cp874', 'cp875', 'cp932',
+                 'cp949', 'cp950', 'cp1006', 'cp1026', 'cp1140', 'cp1251',
+                 'cp1253', 'cp1254', 'cp1255', 'cp1256', 'cp1257',
+                 'cp1258', 'euc_jp', 'euc_jis_2004', 'euc_jisx0213',
+                 'euc_kr', 'gb2312', 'gbk', 'gb18030', 'hz', 'iso2022_jp',
+                 'iso2022_jp_1', 'iso2022_jp_2', 'iso2022_jp_2004',
+                 'iso2022_jp_3', 'iso2022_jp_ext', 'iso2022_kr', 'latin_1',
+                 'iso8859_2', 'iso8859_3', 'iso8859_4', 'iso8859_5',
+                 'iso8859_6', 'iso8859_7', 'iso8859_8', 'iso8859_9',
+                 'iso8859_10', 'iso8859_13', 'iso8859_14', 'iso8859_15',
+                 'iso8859_16', 'johab', 'koi8_r', 'koi8_u', 'mac_cyrillic',
+                 'mac_greek', 'mac_iceland', 'mac_latin2', 'mac_roman',
+                 'mac_turkish', 'ptcp154', 'shift_jis', 'shift_jis_2004',
+                 'shift_jisx0213'
+                 )
+    for e in encodings:
+        try:
+            fh = codecs.open(filename, 'r', encoding=e)
+            fh.readlines()
+        except UnicodeDecodeError:
+            fh.close()
+        except UnicodeError:
+            fh.close()
+        else:
+            encoding_list.append([e])
+            fh.close()
+            continue
+    return encoding_list
+
+
+def get_file_encoding(filename):
+    # from <https://stackoverflow.com/a/44405580>
+    file_encoding = get_file_bom_encoding(filename)
+    if file_encoding != '':
+        return file_encoding
+    encoding_list = get_all_file_encodings(filename)
+    file_encoding = str(encoding_list[0][0])
+    if file_encoding[-3:] == '_be' or file_encoding[-3:] == '_le':
+        file_encoding = file_encoding[:-3]
+    return file_encoding

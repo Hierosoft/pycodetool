@@ -37,10 +37,9 @@ except ImportError as ex:
         else:
             sys.stderr.write('There is no "{}"\n'.format(good_flag))
             sys.stderr.flush()
-            raise ex
+            raise
     else:
-        raise ex
-
+        raise
 
 from pycodetool import (
     echo0,

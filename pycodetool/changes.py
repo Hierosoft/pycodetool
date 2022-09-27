@@ -38,7 +38,7 @@ def get_repo_infos(parent):
         except git.exc.GitCommandError as ex:
             print(sub + ":")
             print("  "+str(ex))
-            # raise ex
+            # raise
             continue
         if (len(changedFiles) > 0) or (len(repo.untracked_files) > 0):
             print(sub + ":")
