@@ -61,7 +61,7 @@ def optionalD(n, want_decimals, mode="format", name=""):
 
     Create a format string that will only add decimals when necessary
     using a calculated number and the g format token. Specify a number
-    of places afterthe decimal point instead of a total number of
+    of places after the decimal point instead of a total number of
     decimals. For example, 11.123456 and .123456 can all be set to 5
     decimals or fewer (whereas usually with g, 11.123456 would only get
     three, rounded up if next digit were 5 or higher). Also as
