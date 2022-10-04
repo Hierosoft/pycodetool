@@ -36,6 +36,9 @@ from pycodetool import (
     get_verbosity,
     DATA_DIR,
 )
+from pycodetool.exactconfig import (
+    ECLineInfo,
+)
 me = "pycodetool.parsing"
 
 try:
@@ -359,6 +362,7 @@ class SourceFileInfo:
             self.full_path(),
             encoding=encoding,
         )
+        self._unsaved_d = {}
 
     def full_path(self):
         return os.path.join(self.repo_path, self.relative_path)
@@ -373,8 +377,32 @@ class SourceFileInfo:
             return count
         path = self.full_path()
         write_lines(path, self._lines, encoding=self._encoding)
-        self._unsaved_lines = []
+        self._unsaved_lines.clear()
+        self._unsaved_d.clear()
         return count
+
+    def get_cached(self, name, line_index=None):
+        '''
+        Get the value whether it is saved or in cache. Also get other
+        info as part of a tuple as described under "Returns" in the
+        get_cdef documentation.
+
+        Keyword arguments:
+        line_index -- If this is set, use this line index (starting at
+            0) and ignore the name.
+        '''
+        if name in self._unsaved_d.keys():
+            # ^ Don't depend on .get since None is ok to return to
+            #   check for the presence of the setting.
+            return self._unsaved_d[name], -1, name, None
+        results = get_cdef(
+            self.full_path(),
+            name,
+            lines=self._lines,
+            line_index=line_index,
+        )
+        # skip=skip
+        return results
 
     def set_cached(self, name, value, comments=None):
         '''
@@ -382,12 +410,20 @@ class SourceFileInfo:
         For documentation see set_cdef(None, ..., lines=...).
 
         Returns:
-        a list of lines that changed.
+        a tuple containing a list of lines that changed and a list of
+        ECLineInfo objects representing values not changed.
         '''
-        changes = set_cdef(None, name, value, comments=comments,
-                           lines=self._lines, encoding=self._encoding)
+        changes, unaffected_items = set_cdef(
+            self.relative_path,  # OK since using lines; necessary for tracking
+            name,
+            value,
+            comments=comments,
+            lines=self._lines,
+            encoding=self._encoding,
+        )
+        self._unsaved_d.update(cdefs_to_d(self.full_path(), changes))
         self._unsaved_lines += changes
-        return changes
+        return changes, unaffected_items
 
     def insert_cached(self, new_lines, after=None, before=None):
         '''
@@ -398,9 +434,17 @@ class SourceFileInfo:
         True if success, False if failed.
         '''
         self._unsaved_lines += new_lines
-        return insert_lines(None, new_lines, after=after, before=before,
-                            lines=self._lines,
-                            encoding=self._encoding)
+        # Cache the values in case there are values in new_lines
+        #   (stored in self._unsaved_d later *only* if actually
+        #   inserted).
+        after_d = cdefs_to_d(self.full_path(), lines=new_lines)
+        # before_d = cdefs_to_d(self.full_path(), lines=self.lines)
+        if insert_lines(None, new_lines, after=after, before=before,
+                        lines=self._lines,
+                        encoding=self._encoding):
+            self._unsaved_d.update(after_d)
+            return True
+        return False
 
 
 warned_suffixes = []
@@ -1817,7 +1861,8 @@ def try_readlines(path, encoding=None):
     return lines, "utf-8"
 
 
-def get_cdef(path, name, lines=None, skip=None, encoding=None):
+def get_cdef(path, name, lines=None, skip=None, encoding=None,
+             line_index=None):
     '''
     Get a value after "#define {}".format(name) in a file located at
     path, and an error.
@@ -1827,14 +1872,17 @@ def get_cdef(path, name, lines=None, skip=None, encoding=None):
         and path is ignored.
     skip -- Skip this many instances (increase to detect more
         instances). The successive result will be ignored if commented.
+    line_index -- Get the value from this line index, and ignore name.
+        The index starts at 0 so it is one less than line_n.
 
     Returns:
-    a tuple of value (string), line number (-1 if not found), and error
-    (string or None)
+    a tuple of value (string), line number (-1 if not found),
+        actual_name, and error (string or None).
 
     Raises:
     UnicodeDecodeError (The implied call to readline in the line iterator
-      raises the error itself).
+      itself raises the error).
+    NotImplementedError if /* is detected inside of an inline comment
     '''
     block_commented = False
     # Account for commented defs:
@@ -1846,6 +1894,14 @@ def get_cdef(path, name, lines=None, skip=None, encoding=None):
     if lines is None:
         lines, got_encoding = try_readlines(path, encoding=encoding)
     count = 0
+    actual_name = None
+    if name is None:
+        if (line_index is None) or (line_index < 0):
+            raise ValueError(
+                "If you don't provide a variable name, you must provide"
+                " a line index (starting at 0 for the first line in the"
+                " case of an index as opposed to a line number)."
+            )
     for rawL in lines:
         line_n += 1  # Start at 1.
         line = rawL.strip()
@@ -1859,7 +1915,16 @@ def get_cdef(path, name, lines=None, skip=None, encoding=None):
                     # will occur unless enclosed in #ifdef, #elif, etc.
                     continue
                 if len(parts) >= 2:
-                    if (parts[0] == "#define") and (parts[1] == name):
+                    if (parts[0] == "#define"):
+                        if line_index is not None:
+                            if line_index != line_n - 1:
+                                continue
+                            actual_name = parts[1]
+                        else:
+                            if (parts[1] != name):
+                                continue
+                        # Only get this value if the name or line_index
+                        #   matches.
                         commented_v_n = line_n
                         commented_v = substring_after(line, name).strip()
                         if commented_v.startswith("//"):
@@ -1878,27 +1943,65 @@ def get_cdef(path, name, lines=None, skip=None, encoding=None):
         if len(line) == 0:
             continue
         parts = line.split()  # spaces/tabs or multiple doesn't matter.
-        if (parts[0] == "#define") and (parts[1] == name):
+        if ((parts[0] == "#define") and \
+                ((parts[1] == name) or (line_index == (line_n-1)))):
             count += 1
             if (skip is not None) and (count <= skip):
                 echo2("* skipped `{}`".format(rawL.strip()))
                 continue
             echo2("* found `{}`".format(rawL.strip()))
-            v = substring_after(line, name).strip()
+            if name is not None:
+                v = substring_after(line, name).strip()
+            else:
+                actual_name = parts[1]
+                v = substring_after(line, actual_name).strip()
             v_n = line_n
             break
     if v is None:
         if commented_v is not None:
             echo2('[pycodetool.parsing get_cdef] commented_v="{}"'
                   ''.format(commented_v))
-            return commented_v, commented_v_n, COMMENTED_DEF_WARNING
+            return commented_v, commented_v_n, actual_name, COMMENTED_DEF_WARNING
     echo2('[pycodetool.parsing get_cdef] v="{}"'
           ''.format(v))
-    return v, v_n, None
+    return v, v_n, actual_name, None
+
+
+def cdefs_to_d(path, lines=None):
+    results = {}
+    got_encoding = None
+    if lines is None:
+        lines, got_encoding = try_readlines(path, encoding=None)
+    for i in range(len(lines)):
+        line = lines[i]
+        v, line_n, got_key, err = get_cdef(
+            path,
+            None,
+            lines=lines,
+            line_index=i
+        )
+
+        if (err is not None):
+            if "commented" in err:
+                v = None
+            else:
+                raise NotImplementedError(
+                    'Whether to store cached values when err is'
+                    ' "{}" is not decided yet--needs test cases.'
+                    ''.format(err)
+                )
+        if got_key is not None:
+            results[got_key] = v
+        else:
+            echo2('There was no variable in `{}`:'
+                  ' The line may be a comment'
+                  ' (but not even a commented `#define` apparently)'
+                  ''.format(line))
+    return results
 
 
 C_CONSTANTS = ['BOARD_MKS_GEN_L', 'ONBOARD', 'TMC2209', 'A4988',
-               'BOARD_BTT_SKR_V1_4_TURBO', ]
+               'BOARD_BTT_SKR_V1_4_TURBO', 'P0_24_A1']
 
 
 def set_cdef(path, name, value, comments=None, lines=None,
@@ -1927,11 +2030,13 @@ def set_cdef(path, name, value, comments=None, lines=None,
         present unless comments[0] == "/*" and comments[-1] == "*/".
 
     Returns:
-    a list of names of names (macro symbols) that were changed.
+    a tuple containing a list of symbols that changed and a list
+    of ECLineInfo objects representing values not changed.
     '''
     names = name
     if (not isinstance(names, list)) and (not isinstance(names, tuple)):
         names = [name]
+    name = None
 
     comment = None
     if (not isinstance(comments, list)) and (not isinstance(comments, tuple)):
@@ -1981,7 +2086,8 @@ def set_cdef(path, name, value, comments=None, lines=None,
         )
 
     do_save = False
-    changed_names = []
+    affected_keys = []
+    unaffected_items = []
     if lines is None:
         if path is None:
             raise ValueError("You must specify a file and/or lines to modify.")
@@ -2000,7 +2106,7 @@ def set_cdef(path, name, value, comments=None, lines=None,
             # GRID_MAX_POINTS_X appears 3 times in Configuration.h
             #   in Marlin 2.0.x-bugfix branch
             #   (ok since protected under #if, #elif, #elif).
-            v, line_n, err = get_cdef(path, name, lines=lines, skip=skip)
+            v, line_n, got_key, err = get_cdef(path, name, lines=lines, skip=skip)
             line_i = line_n - 1
             # COMMENTED_DEF_WARNING is ok (using that line is safe
             #   since the warning indicates there is no non-commented
@@ -2015,12 +2121,24 @@ def set_cdef(path, name, value, comments=None, lines=None,
                         continue
                     line = indent + "// " + original_line.lstrip()
                     lines[line_i] = line
-                    changed_names.append(name)
+                    if v is not None:
+                        affected_keys.append(name)
+                    else:
+                        unaffected_items.append(ECLineInfo(
+                            name,
+                            None,
+                            v=v,
+                            # t="string",
+                            i=line_i,
+                            commented=value is None,
+                            cm="//",
+                            path=path,
+                            orphan=True,
+                        ))
                     print(line)
                     if get_verbosity() > 0:
                         echo0('* formerly "{}"'.format(original_line))
                     continue
-                changed_names.append(name)
                 indent_count = len(rawL) - len(rawL.lstrip())
                 indent = rawL[:indent_count]
                 line = rawL.strip()
@@ -2031,7 +2149,24 @@ def set_cdef(path, name, value, comments=None, lines=None,
                 if parts[0] != "#define":
                     raise RuntimeError('{}:{}: expected #define'
                                        ''.format(path, line_n))
+                if v != value:
+                    affected_keys.append(name)
+                else:
+                    unaffected_items.append(ECLineInfo(
+                        name,
+                        None,
+                        v=v,
+                        # t="string",
+                        i=line_i,
+                        commented=value is None,
+                        cm="//",
+                        path=path,
+                        orphan=True,
+                    ))
+
+
                 if v == "":
+                    # define the symbol, but do not give it a value.
                     # if len(parts) < 3:
                     #   pass # There is no comment.
                     name_i = line.find(parts[1])
@@ -2170,12 +2305,23 @@ def set_cdef(path, name, value, comments=None, lines=None,
                                 if "*/" in this_cmt:
                                     block_start_c_i = None
                                     block_start = None
-
+            else:
+                unaffected_items.append(ECLineInfo(
+                    name,
+                    None,
+                    v=value,
+                    # t="string",
+                    i=-1,
+                    commented=value is None,
+                    cm="//",
+                    path=path,
+                    orphan=True,
+                ))
         # if name == "PID_EDIT_MENU":
         #     raise NotImplementedError("preserving comments") # debug only
     if do_save:
         write_lines(path, lines, encoding=encoding)
-    return changed_names
+    return affected_keys, unaffected_items
 
 
 def write_lines(path, lines, encoding=DEFAULT_CO):
@@ -2209,6 +2355,7 @@ def write_lines(path, lines, encoding=DEFAULT_CO):
             except UnicodeEncodeError:
                 echo0('\nError: Encoding "{}" failed:'.format(rawL))
                 raise
+    return True
 
 
 def find_non_whitespace(haystack, start, step=1):

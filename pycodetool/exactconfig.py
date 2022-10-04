@@ -38,7 +38,7 @@ ec_non_value_types = ["example", "comment", "bad_syntax", "raw"]
 class ECLineInfo:
     def __init__(self, n, parent, t="string", v=None, i=None,
                  commented=False, before_ao="", after_ao="", after="",
-                 cm=None):
+                 cm=None, path=None, orphan=False):
         """
         Sequential arguments:
         n -- set the name.
@@ -58,22 +58,26 @@ class ECLineInfo:
         i -- Set the line number or other reference number.
         commented -- Set whether the variable is a comment or is active.
         before_ao -- Set any text (generally whitespace) that should go
-                     before the assignment operator.
+            before the assignment operator.
         after_ao -- Set any text (generally whitespace) that should go
-                    after the assignment operator.
+            after the assignment operator.
         after -- Set any text that should go after the value, such as
-                 "  # This variable does something."
-                 If the line is a comment, "after" should be the whole
-                 line.
+            "  # This variable does something."
+            If the line is a comment, "after" should be the whole
+            line.
         cm -- A comment mark (and in the case of an example
-              type of comment (._t=="example"), the comment mark
-              must be followed by any whitespace that should be
-              preserved).
+            type of comment (._t=="example"), the comment mark
+            must be followed by any whitespace that should be
+            preserved).
+        path -- set the path of the file from which the line originated.
+        orphan -- You must set this to True if parent is None, but
+            only do so if using ECLineInfo outside of ExactConfig.
         """
 
-        # Assert that the parent type is correct via duck typing:
-        parent_ao = parent._ao
-        parent_cm = parent._cm
+        if orphan is not True:
+            # Assert that the parent type is correct via duck typing:
+            parent_ao = parent._ao
+            parent_cm = parent._cm
 
         self._parent = parent
         self._n = n
@@ -87,6 +91,7 @@ class ECLineInfo:
         # if not an example but an example occurred, save the index
         self._commented = commented
         self._after = after
+        self._path = path
 
     def dump(self):
         return "[{}]:{}{}{}{}{}{}".format(self._i, self._n,
