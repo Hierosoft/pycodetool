@@ -73,6 +73,10 @@ import os
 import re
 import json
 import platform
+from datetime import (
+    datetime,
+    timedelta,
+)
 
 from pycodetool import (
     echo0,  # formerly prerr as error
@@ -644,20 +648,35 @@ def ggrep(pattern, path, more_args=None, include=None, recursive=True,
           quiet=True, ignore=None, ignore_root=None, gitignore=True,
           show_args_warnings=True, allow_non_regex_pattern=True,
           trace_ignore_files={}, follow_symlinks=True,
-          followed_targets=[]):
+          followed_targets=[], result_file_fmt="{path}:{line_n}:{line}"):
     '''
     Find a pattern within files in a given path (or one file if path is
     a file) and yield the next for each.
 
     Sequential arguments:
+    path -- any path or no path that should be the start directory and
+        should be the prefix of each result. If blank, each result will
+        be a relative path.
     pattern -- a regular expression or plain text substring
 
     Keyword arguments:
     allow_non_regex_pattern -- Allow the pattern to be in string even if
         pattern is a substring rather than regex.
-    '''
+    result_file_fmt -- The format for how to return each result in the
+        'files' list in the returned dictionary, where {path} is the
+        path to the file (beginning with path given as first sequential
+        argument), {line_n} is the line number in the file path, and
+        {line} is the string with the content (the line data itself
+        excluding the newline character).
 
-    results = []
+    Returns:
+    A dictionary with various information such as:
+    - 'files': The list of results (formatted using result_file_fmt)
+    '''
+    results = {}
+    results['files'] = []
+    results['read_mb'] = 0.0
+    results['read_count'] = 0
     try:
         for sub in filter_tree(path, more_args=more_args,
                                include=include, recursive=recursive,
@@ -672,15 +691,19 @@ def ggrep(pattern, path, more_args=None, include=None, recursive=True,
             # if path == "":
             #     subPath = sub
             # if not os.path.isfile(subPath):
+
             if not os.path.isfile(os.path.realpath(sub)):
                 # echo3('- not a file: "{}"'.format(sub))
                 continue
             else:
                 pass
                 # echo3("- examining file: {}".format(sub))
+
+            size = os.path.getsize(sub)
             with open(sub, 'r') as ins:
                 lineN = 0
                 try:
+
                     echo3('* Checking "{}"'.format(sub))
                     for rawL in ins:
                         lineN += 1
@@ -688,18 +711,20 @@ def ggrep(pattern, path, more_args=None, include=None, recursive=True,
                         if (re.search(pattern, line)
                                 or (allow_non_regex_pattern
                                     and (pattern in line))):
-                            result = "{}:{}:{}".format(
-                                sub,
-                                lineN,
-                                line,
+                            result = result_file_fmt.format(
+                                path=sub,
+                                line_n=lineN,
+                                line=line,
                             )
-                            results.append(result)
+                            results['files'].append(result)
                             if not quiet:
                                 print(result)
                         else:
                             pass
                             # echo3('  * pattern "{}" is not in line'
                             #       ' "{}"'.format(pattern, line))
+                    results['read_count'] += 1
+                    results['read_mb'] += float(size) / 1024.0 / 1024.0
                 except UnicodeDecodeError as ex:
                     # 'utf-8' codec can't decode byte 0x89 in position
                     #  0: invalid start byte
@@ -713,8 +738,8 @@ def ggrep(pattern, path, more_args=None, include=None, recursive=True,
             " (This should never happen): {}".format(str(ex))
         )
         pass
-        # results.append(sub)
-    # for result in results:
+        # results['files'].append(sub)
+    # for result in results['files']:
     #     print(result)
     return results
 
@@ -1070,6 +1095,7 @@ def quoted(path):
 
 # TODO: Ignore the .git directory.
 def main():
+    start_dt = datetime.now()
     include_args = default_includes.copy()
     me = "ggrep"
     prev_var = ""
@@ -1244,7 +1270,9 @@ def main():
             # ^ don't filter an explicitly-set file!
         results = ggrep(pattern, path, more_args=_new_args,
                         include=current_inc, gitignore=gitignore)
-        for line in results:
+        files = results.get('files')
+        mb = results.get('read_mb')
+        for line in files:
             colon1 = line.find(":")
             colon2 = line.find(":", colon1+1)
             if colon2 <= colon1:
@@ -1259,8 +1287,8 @@ def main():
                   "".format(quoted(_file), _line_n, line[colon2+1:]))
 
         echo0()
-        echo0("({} match(es))".format(len(results)))
-        total_count += len(results)
+        echo0("({} match(es))".format(len(files)))
+        total_count += len(files)
 
     if len(paths) > 0:
         echo0()
@@ -1299,6 +1327,10 @@ def main():
         echo0("  # and add --no-ignore to search in"
               " .git directories and in files listed in"
               " .gitignore files")
+    delta = datetime.now() - start_dt
+    echo0("MB read: {}".format(mb))
+    echo0("elapsed: {}".format(delta))
+    echo0("MB/s: {}".format(float(mb)/delta.total_seconds()))
     return 0
 
 

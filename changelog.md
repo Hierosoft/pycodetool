@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
+## [git] - 2022-11-1
+### Changed
+- Add stats.
+- Document the output format.
+
+
 ## [git] - 2021-03-13
 ### Added
 - more tests
