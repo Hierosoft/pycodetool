@@ -677,6 +677,7 @@ def ggrep(pattern, path, more_args=None, include=None, recursive=True,
     results['files'] = []
     results['read_mb'] = 0.0
     results['read_count'] = 0
+    results['match_count'] = 0
     try:
         for sub in filter_tree(path, more_args=more_args,
                                include=include, recursive=recursive,
@@ -700,10 +701,10 @@ def ggrep(pattern, path, more_args=None, include=None, recursive=True,
                 # echo3("- examining file: {}".format(sub))
 
             size = os.path.getsize(sub)
+            matched = False
             with open(sub, 'r') as ins:
                 lineN = 0
                 try:
-
                     echo3('* Checking "{}"'.format(sub))
                     for rawL in ins:
                         lineN += 1
@@ -711,6 +712,7 @@ def ggrep(pattern, path, more_args=None, include=None, recursive=True,
                         if (re.search(pattern, line)
                                 or (allow_non_regex_pattern
                                     and (pattern in line))):
+                            matched = True
                             result = result_file_fmt.format(
                                 path=sub,
                                 line_n=lineN,
@@ -724,6 +726,8 @@ def ggrep(pattern, path, more_args=None, include=None, recursive=True,
                             # echo3('  * pattern "{}" is not in line'
                             #       ' "{}"'.format(pattern, line))
                     results['read_count'] += 1
+                    if matched:
+                        results['match_count'] += 1
                     results['read_mb'] += float(size) / 1024.0 / 1024.0
                 except UnicodeDecodeError as ex:
                     # 'utf-8' codec can't decode byte 0x89 in position
@@ -1328,6 +1332,8 @@ def main():
               " .git directories and in files listed in"
               " .gitignore files")
     delta = datetime.now() - start_dt
+    echo0("read_count: {}".format(results['read_count']))
+    echo0("match_count: {}".format(results['match_count']))
     echo0("MB read: {}".format(mb))
     echo0("elapsed: {}".format(delta))
     echo0("MB/s: {}".format(float(mb)/delta.total_seconds()))
