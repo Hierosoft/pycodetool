@@ -53,7 +53,6 @@ setuptools.setup(
     # point-which-calls>
     entry_points={
         'console_scripts': [
-            'ggrep=pycodetool.ggrep:main',
             'changes=pycodetool.changes:main',
         ],
     },
