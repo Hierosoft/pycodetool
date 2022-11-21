@@ -27,23 +27,10 @@ id=7029">C# Language Specification 5.0</a> by Microsoft -->
 #     optional parts, I've changed " opt" to "_opt" (subscript notation
 #     barrowed from LaTeX).
 
-try:
-    import pycodetool
-except ImportError as ex:
-    # ^ Python 3 ModuleNotFoundError is a subclass of ImportError
-    if (("No module named 'pycodetool'" in str(ex))  # Python 3
-            or ("No module named pycodetool" in str(ex))):
-        good_flag = os.path.join(REPO_DIR, "pycodetool", "__init__.py")
-        if os.path.isfile(good_flag):
-            sys.path.insert(0, REPO_DIR)
-        else:
-            sys.stderr.write('There is no "{}"\n'.format(good_flag))
-            sys.stderr.flush()
-            raise
-    else:
-        raise
+from .find_hierosoft import hierosoft
+# ^ It changes sys.path so importing submodules below will even work.
 
-from pycodetool import (
+from hierosoft.logging import (
     echo0,
     echo1,
     echo2,
