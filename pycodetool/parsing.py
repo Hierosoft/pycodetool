@@ -712,41 +712,41 @@ def RepresentsFloat(s):
         return False
 
 
-def view_traceback(min_indent=""):
+def view_traceback(indent=""):
     ex_type, ex, tb = sys.exc_info()
-    print(min_indent+str(ex_type))
-    print(min_indent+str(ex))
+    print(indent+str(ex_type))
+    print(indent+str(ex))
     traceback.print_tb(tb)
     del tb
 
 
-def print_file(path, min_indent=""):
+def print_file(path, indent=""):
     line_count = 0
     if path is None:
-        echo0(min_indent+"print_file: path is None")
+        echo0(indent+"print_file: path is None")
         return 0
     if not os.path.isfile(path):
-        echo0(min_indent+"print_file: file does not exist")
+        echo0(indent+"print_file: file does not exist")
         return 0
     try:
-        if min_indent is None:
-            min_indent = ""
+        if indent is None:
+            indent = ""
         ins = open(path, 'r')
         rawl = True
         while rawl:
             rawl = ins.readline()
             line_count += 1
             if rawl:
-                print(min_indent+rawl)
+                print(indent+rawl)
         ins.close()
         # if line_count == 0:
-        #     print(min_indent + "print_file WARNING: "
+        #     print(indent + "print_file WARNING: "
         #           + str(line_count)+" line(s) in '"+path+"'")
         # else:
-        #     print(min_indent + "# " + str(line_count)
+        #     print(indent + "# " + str(line_count)
         #           + " line(s) in '" + path + "'")
     except PermissionError as ex:
-        echo0(min_indent+'print_file: could not read "{}": {}'
+        echo0(indent+'print_file: could not read "{}": {}'
               "".format(path, ex))
     return line_count
 
