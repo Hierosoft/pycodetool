@@ -1479,13 +1479,6 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
         raise ValueError("step is 0")
     if endbefore is None:
         endbefore = len(haystack)
-    if endbefore > len(haystack):
-        echo0("WARNING: endbefore was too big so it will change to"
-              " len(haystack) (endbefore={}, len(haystack)={})."
-              "".format(endbefore, len(haystack)))
-        endbefore = len(haystack)
-    if endbefore is None:
-        endbefore = len(haystack)
     elif endbefore < 0:
         new_endbefore = len(haystack) + endbefore
         # ^ + since already negative
@@ -1494,6 +1487,11 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
               " new_endbefore={})."
               "".format(endbefore, new_endbefore))
         endbefore = new_endbefore
+    elif endbefore > len(haystack):
+        echo0("WARNING: endbefore was too big so it will change to"
+              " len(haystack) (endbefore={}, len(haystack)={})."
+              "".format(endbefore, len(haystack)))
+        endbefore = len(haystack)
     if len(haystack) == 0:
         # ^ prevents dubious meaning in ValueError below
         pass
@@ -1630,7 +1628,7 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
 
 
 def find_unquoted_not_commented_not_parenthetical(haystack, needle,
-                                                  start=0, endbefore=-1,
+                                                  start=0, endbefore=None,
                                                   step=1,
                                                   comment_delimiters=["#"],
                                                   quote_marks=["'", '"']):
@@ -1654,7 +1652,7 @@ def find_unquoted_not_commented_not_parenthetical(haystack, needle,
     )
 
 
-def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
+def find_unquoted_not_commented(haystack, needle, start=0, endbefore=None,
                                 step=1, comment_delimiters=["#"],
                                 quote_marks=['"', "'"]):
     '''
@@ -1677,7 +1675,7 @@ def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
 
 
 def find_unquoted_even_commented(haystack, needle, start=0,
-                                 endbefore=-1, step=1,
+                                 endbefore=None, step=1,
                                  comment_delimiters=["#"],
                                  quote_marks=["'", '"']):
     '''
