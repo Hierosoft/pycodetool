@@ -1545,12 +1545,12 @@ class PCTParser:
                 break
         return result
 
-    def get_symbol_number_using_dot_notation(self,
-                                             fully_qualified_name):
+    def get_symbol_number_using_dot_notation(self, fully_qualified_name):
         result = -1
-        fqn = this_object.get_fully_qualified_name()
+        # fqn = this_object.get_fully_qualified_name()
         for index in range(0, len(self.symbols)):
             this_object = self.symbols[index]
+            fqn = this_object.get_fully_qualified_name()
             if fully_qualified_name == this_object.name:
                 if this_object.name.find(".") >= 0:
                     self.pperr("  ERROR: symbol '"
