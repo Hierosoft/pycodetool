@@ -31,10 +31,12 @@ from pycodetool.parsing import (
     END_BEFORE_QUOTE_ERR,
     explode_unquoted,
     find_unquoted_not_commented_not_parenthetical,
+    find_unquoted_even_commented,
     assertEqual,  # This is a special one with custom output.
     AbstractFn,
     slice_is_space,
     isnumber,
+    explode_unquoted,
 )
 
 
@@ -138,9 +140,12 @@ class TestParsing(unittest.TestCase):
         assertEqual(test_s[goodIs[1][0]:goodIs[1][1]], '" # "',
                     tbs="The silent degradation test itself is wrong.")
         gotIs = quoted_slices(test_s, start=6)
-        self.assertAllEqual(goodIs, gotIs, tbs=("quoted slices {} should silently"
-                                           " degrade to {}"
-                                           "".format(gotIs, goodIs)))
+        self.assertAllEqual(
+            goodIs,
+            gotIs,
+            tbs=("quoted slices {} should silently degrade to {}"
+                 "".format(gotIs, goodIs)),
+        )
         assertEqual(get_quoted_slices_error(), END_BEFORE_QUOTE_ERR)
         echo0("^ TEST: An unterminated quote is expected since start=6"
               " (if it warned correctly, it PASSED)")
@@ -395,6 +400,78 @@ class TestParsing(unittest.TestCase):
         self.assertEqual(isnumber("4"), True)
         self.assertEqual(isnumber("4f"), False)
         self.assertEqual(isnumber("4f", suffixes=c_suffixes), True)
+
+    def test_find_unquoted_even_commented(self):
+        sample = '<a href="#b" #a #b>'
+        tag_i = find_unquoted_even_commented(sample, "b")
+        self.assertEqual(tag_i, 17)  # 17 for 2nd b, not quoted one
+        self.assertEqual(sample[tag_i-1:tag_i+2], "#b>")
+
+    def test_explode_unquoted__ignore_quoted_delimiters(self):
+        '''
+        test_explode_unquoted__ methods test parsing assignment
+        operations (attributes) inside of an HTML opening tag.
+        - allow_escaping_quotes=False since in HTML, "&quot;" is the
+          correct way to escape quotes.
+        '''
+        set_verbosity(2)
+
+        sample = 'a href="b c" d e'
+        # echo0()
+        # echo0("0. Ignore (only) quoted delimiters:")
+        parts = explode_unquoted(sample, " ", min_indent="  ",
+                                 allow_escaping_quotes=False)
+        echo0("  parts={}".format(parts))
+        self.assertEqual(len(parts), 4)
+        self.assertEqual(parts[0], "a")
+        self.assertEqual(parts[1], 'href="b c"')
+        self.assertEqual(parts[2], "d")
+        self.assertEqual(parts[3], "e")
+
+    def test_explode_unquoted__do_not_allow_commented(self):
+        sample = 'a href="#b c" #d #e'
+        # echo0()
+        # echo0("1. Do not allow commented:")
+        '''
+        allow_commented=False is not the correct way to parse HTML
+        since '#' is not a comment mark in HTML, but this will test the
+        explode_unquoted allow_commented=False feature in a way that is
+        not HTML-specific to test the case:
+        '''
+        parts = explode_unquoted(sample, " ", allow_commented=False,
+                                 min_indent="  ",
+                                 allow_escaping_quotes=False)
+        echo0("  parts={}".format(parts))
+        self.assertEqual(len(parts), 2)
+        self.assertEqual(parts[0], "a")
+        self.assertEqual(parts[1], 'href="#b c"')
+
+    def test_explode_unquoted__allow_commented(self):
+        sample = 'a href="#b c" #d #e'
+        # echo0()
+        # echo0("2. Allow commented:")
+        parts = explode_unquoted(sample, " ", allow_commented=True,
+                                 min_indent="  ",
+                                 allow_escaping_quotes=False)
+        echo0("  parts={}".format(parts))
+        self.assertEqual(parts[0], "a")
+        self.assertEqual(parts[1], 'href="#b c"')
+        self.assertEqual(parts[2], "#d")
+        self.assertEqual(parts[3], "#e")
+
+    def test_explode_unquoted__allow_commented_and_other_quote_marks(self):
+        sample = 'a href="#b c" \'#d #e\''
+        # echo0()
+        # echo0("3. Allow commented, only quotes are '\"':")
+        parts = explode_unquoted(sample, " ", quote_marks='"',
+                                 allow_commented=True,
+                                 min_indent="  ",
+                                 allow_escaping_quotes=False)
+        echo0("  parts={}".format(parts))
+        self.assertEqual(parts[0], "a")
+        self.assertEqual(parts[1], 'href="#b c"')
+        self.assertEqual(parts[2], "'#d")
+        self.assertEqual(parts[3], "#e'")
 
 
 if __name__ == "__main__":
