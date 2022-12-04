@@ -1473,10 +1473,14 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
     result = -1
     closers = {}
     comment_i = -1
+    if haystack is None:
+        raise ValueError("haystack is None.")
+    if needle is None:
+        raise ValueError("needle is None.")
+    if len(needle) < 1:
+        raise ValueError("len(needle) is 0.")
     if comment_delimiters is None:
         comment_delimiters = []
-    if step == 0:
-        raise ValueError("step is 0")
     if endbefore is None:
         endbefore = len(haystack)
     elif endbefore < 0:
@@ -1505,22 +1509,26 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
                          " endbefore-1 (start={}, endbefore={},"
                          " step={})"
                          "".format(start, endbefore, step))
+    '''
     q_slices = None
     if (step < 0) and (not allow_quoted):
         q_slices = quoted_slices(haystack, start=start,
                                  endbefore=endbefore)
+    '''
     if (step < 0) and (not allow_commented):
         for comment_delimiter in comment_delimiters:
-            delI = find_in_code(haystack, comment_delimiter,
-                                start=0,
-                                # endbefore=endbefore
-                                # ^ never end early to find comment!
-                                step=1,  # forward to find comment!
-                                enclosures=None,  # ignore for comment
-                                allow_quoted=False,  # False for comment
-                                comment_delimiters=None,
-                                # ^ None since it is the needle now
-                                allow_commented=False)
+            delI = find_in_code(
+                haystack,
+                comment_delimiter,
+                start=start,
+                # endbefore=endbefore
+                # ^ never end early to find comment!
+                step=1,  # forward to find comment!
+                enclosures=None,  # ignore for comment
+                allow_quoted=False,  # False for comment
+                comment_delimiters=None,  # None since it is the needle now!
+                allow_commented=False,
+            )
             if delI >= 0:
                 if (comment_i < 0) or (delI < comment_i):
                     comment_i = delI
@@ -1552,9 +1560,7 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
     # prev_char = None  # in case step doesn't matter
     left_char = None  # in case step is negative
     # ^ also used in find_unquoted_even_commented
-    if ((haystack is not None) and
-            (needle is not None) and
-            (len(needle) > 0)):
+    if ((haystack is not None) and (needle is not None) and (len(needle) > 0)):
         in_quote = None
         opener_stack = []
         index = start
@@ -1562,8 +1568,8 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
             index = endbefore - 1
         echo2("    find_in_code in "
               + haystack.strip() + ":")
-        while ((step > 0 and index <= (endbefore-len(needle))) or
-               (step < 0 and (index >= start))):
+        while ((step > 0 and index <= (endbefore-len(needle)))
+                or (step < 0 and (index >= start))):
             this_char = haystack[index:index+1]
             here_c_del = None
             for c_del in comment_delimiters:
