@@ -971,6 +971,9 @@ def get_operation_chunk_len(val, start=0, step=1, line_n=None):
     quotes = "'\""
     ender = len(val)
     direction_msg = "after opening"
+    if step not in [-1, 1]:
+        raise ValueError("step must be -1 or 1 not {}.".format(step))
+
     if step < 0:
         tmp = openers
         openers = closers
@@ -1114,6 +1117,9 @@ def is_allowed_in_variable_name_char(one_char):
 
 def find_any_not(haystack, char_needles, start=None, step=1):
     result = -1
+    if step not in [-1, 1]:
+        raise ValueError("step must be -1 or 1 not {}.".format(step))
+
     if (len(char_needles) > 0) and (len(haystack) > 0):
         endbefore = len(haystack)
         if start is None:
@@ -1459,6 +1465,8 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
         beforehand (therefore negative step doubles the processing time
         on average).
     '''
+    if step not in [-1, 1]:
+        raise ValueError("step must be -1 or 1 not {}.".format(step))
     for quote_mark in quote_marks:
         if len(quote_mark) > 1:
             raise ValueError("Each quote mark can only be 1 in length.")
@@ -2374,7 +2382,7 @@ def write_lines(path, lines, encoding=DEFAULT_CO):
 
 def find_non_whitespace(haystack, start, step=1):
     if step not in [-1, 1]:
-        raise ValueError("step must be -1 or 1.")
+        raise ValueError("step must be -1 or 1 not {}.".format(step))
     i = start - step
     while True:
         i += step
@@ -2391,7 +2399,7 @@ def find_non_whitespace(haystack, start, step=1):
 
 def find_whitespace(haystack, start, step=1):
     if step not in [-1, 1]:
-        raise ValueError("step must be -1 or 1.")
+        raise ValueError("step must be -1 or 1 not {}.".format(step))
     i = start - step
     while True:
         i += step
