@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
 Parse data and manipulate variables.
 """
@@ -28,12 +28,17 @@ import copy
 # import chardet  # not built-in
 import codecs
 
+from .find_hierosoft import hierosoft
+# ^ also works for submodules since changes sys.path
 
-from pycodetool import (
+from hierosoft.logging import (
     echo0,
     echo1,
     echo2,
     get_verbosity,
+)
+
+from pycodetool import (
     DATA_DIR,
 )
 from pycodetool.exactconfig import (
@@ -1130,7 +1135,7 @@ def find_any_not(haystack, char_needles, start=None, step=1):
 
 
 def explode_unquoted(haystack, delimiter, get_str_i_tuple=False,
-                     strip=True):
+                     strip=True, quote_marks=['"', "'"]):
     '''
     Explode using a delimiter except quoted delimiters using double or
     single quotes. See quoted_slices for a function that uses quotes
@@ -1148,7 +1153,8 @@ def explode_unquoted(haystack, delimiter, get_str_i_tuple=False,
     echo2("explode_unquoted:")
     while True:
         index = find_unquoted_not_commented(haystack, delimiter,
-                                            start=start)
+                                            start=start,
+                                            quote_marks=quote_marks)
         echo2('- substring haystack[{}:]="{}"'
               ''.format(start, haystack[start:]))
         if index >= 0:
@@ -1432,7 +1438,7 @@ def quoted_slices(haystack, start=0, endbefore=None,
 def find_in_code(haystack, needle, start=0, endbefore=None,
                  step=1, comment_delimiters=["#"],
                  enclosures=None, allow_quoted=True,
-                 allow_commented=False):
+                 allow_commented=False, quote_marks=['"', "'"]):
     '''
     Keyword arguments:
     start -- where to start (if step is negative go from endbefore-1 to
@@ -1453,6 +1459,9 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
         beforehand (therefore negative step doubles the processing time
         on average).
     '''
+    for quote_mark in quote_marks:
+        if len(quote_mark) > 1:
+            raise ValueError("Each quote mark can only be 1 in length.")
     result = -1
     closers = {}
     comment_i = -1
@@ -1581,7 +1590,7 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
                              or (haystack[index:index+3] == "'''"))):
                     # TODO: handle multi-line comments?
                     break
-                elif (this_char == '"') or (this_char == "'"):
+                elif this_char in quote_marks:
                     # ^ Don't check for escape characters when not
                     #   in quotes yet!
                     in_quote = this_char
@@ -1615,7 +1624,8 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
 def find_unquoted_not_commented_not_parenthetical(haystack, needle,
                                                   start=0, endbefore=-1,
                                                   step=1,
-                                                  comment_delimiters=["#"]):
+                                                  comment_delimiters=["#"],
+                                                  quote_marks=["'", '"']):
     '''
     This function was lost and not found in a previous commit, and may
     have never been created after used. Therefore, 2021-03-13 it was
@@ -1632,11 +1642,13 @@ def find_unquoted_not_commented_not_parenthetical(haystack, needle,
         comment_delimiters=comment_delimiters,
         enclosures=["()"],
         allow_quoted=False,
+        quote_marks=quote_marks,
     )
 
 
 def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
-                                step=1, comment_delimiters=["#"]):
+                                step=1, comment_delimiters=["#"],
+                                quote_marks=['"', "'"]):
     '''
     This function was lost and not found in a previous commit, and may
     have never been created after used. Therefore, 2021-03-13 it was
@@ -1652,12 +1664,14 @@ def find_unquoted_not_commented(haystack, needle, start=0, endbefore=-1,
         step=step,
         comment_delimiters=comment_delimiters,
         allow_quoted=False,
+        quote_marks=quote_marks,
     )
 
 
 def find_unquoted_even_commented(haystack, needle, start=0,
                                  endbefore=-1, step=1,
-                                 comment_delimiters=["#"]):
+                                 comment_delimiters=["#"],
+                                 quote_marks=["'", '"']):
     '''
     This function was lost and not found in a previous commit, and may
     have never been created after used. Therefore, 2021-03-13 it was
@@ -1674,6 +1688,7 @@ def find_unquoted_even_commented(haystack, needle, start=0,
         comment_delimiters=comment_delimiters,
         allow_quoted=False,
         allow_commented=True,
+        quote_marks=quote_marks,
     )
 
 
@@ -1943,8 +1958,8 @@ def get_cdef(path, name, lines=None, skip=None, encoding=None,
         if len(line) == 0:
             continue
         parts = line.split()  # spaces/tabs or multiple doesn't matter.
-        if ((parts[0] == "#define") and \
-                ((parts[1] == name) or (line_index == (line_n-1)))):
+        if ((parts[0] == "#define")
+                and ((parts[1] == name) or (line_index == (line_n-1)))):
             count += 1
             if (skip is not None) and (count <= skip):
                 echo2("* skipped `{}`".format(rawL.strip()))
@@ -2164,7 +2179,6 @@ def set_cdef(path, name, value, comments=None, lines=None,
                         orphan=True,
                     ))
 
-
                 if v == "":
                     # define the symbol, but do not give it a value.
                     # if len(parts) < 3:
@@ -2371,6 +2385,23 @@ def find_non_whitespace(haystack, start, step=1):
             if i >= len(haystack):
                 break
         if haystack[i].strip() == haystack[i]:
+            return i
+    return -1
+
+
+def find_whitespace(haystack, start, step=1):
+    if step not in [-1, 1]:
+        raise ValueError("step must be -1 or 1.")
+    i = start - step
+    while True:
+        i += step
+        if step < 1:
+            if i < 0:
+                break
+        else:
+            if i >= len(haystack):
+                break
+        if haystack[i].strip() != haystack[i]:
             return i
     return -1
 
