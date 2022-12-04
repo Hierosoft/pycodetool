@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
 usage:
   python_remove_dotnet.py <source> <dest> [<output identifierlist>]

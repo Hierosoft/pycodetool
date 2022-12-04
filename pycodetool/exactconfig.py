@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Parse config files, preserving comments. Place the value after the
 example if the example is commented, for clarity.
