@@ -1151,7 +1151,8 @@ def find_any_not(haystack, char_needles, start=None, step=1):
 def explode_unquoted(haystack, delimiter, get_str_i_tuple=False,
                      strip=True, quote_marks=['"', "'"],
                      allow_commented=False, min_indent="",
-                     allow_escaping_quotes=True):
+                     allow_escaping_quotes=True,
+                     comment_marks="#"):
     '''
     Explode using a delimiter except quoted delimiters using double or
     single quotes. See quoted_slices for a function that uses quotes
@@ -1165,21 +1166,37 @@ def explode_unquoted(haystack, delimiter, get_str_i_tuple=False,
     strip -- Remove whitespace from each element.
     min_indent -- The starting indent only used for logging.
     '''
+    if not allow_commented:
+        comment_i = -1
+        for comment_mark in comment_marks:
+            index = find_unquoted_even_commented(
+                haystack,
+                comment_mark,
+                quote_marks=quote_marks,
+                min_indent=min_indent+"  ",
+                allow_escaping_quotes=allow_escaping_quotes,
+            )
+            if index > -1:
+                if (comment_i < 0) or (index < comment_i):
+                    # Use the first comment mark (If found unquoted).
+                    comment_i = index
+        if comment_i > -1:
+            haystack = haystack[:comment_i]
     elements = list()
     start = 0
     echo2(min_indent+"explode_unquoted:")
-    while True:
+    while start < len(haystack):
         if allow_commented:
-            index = find_unquoted_even_commented(
+            end = find_unquoted_even_commented(
                 haystack,
                 delimiter,
                 start=start,
-                 quote_marks=quote_marks,
-                 min_indent=min_indent+"  ",
-                 allow_escaping_quotes=allow_escaping_quotes,
+                quote_marks=quote_marks,
+                min_indent=min_indent+"  ",
+                allow_escaping_quotes=allow_escaping_quotes,
             )
         else:
-            index = find_unquoted_not_commented(
+            end = find_unquoted_not_commented(
                 haystack,
                 delimiter,
                 start=start,
@@ -1189,30 +1206,33 @@ def explode_unquoted(haystack, delimiter, get_str_i_tuple=False,
             )
         echo2(min_indent+'- haystack[{}:]="{}"'
               ''.format(start, haystack[start:]))
-        echo2(min_indent+'- index={}'
-              ''.format(index))
-
-        if index >= 0:
-            hs = haystack
-            element = hs[start:index].strip() if strip else hs[start:index]
-            if get_str_i_tuple:
-                elements.append((element, start, index))
-            else:
-                elements.append(element)
-            start = index + 1  # +1 to skip the delimiter
-            if start + len(elements[-1]) >= len(haystack):
-                break
+        echo2(min_indent+'- end={} ender="{}"'
+              ''.format(end, delimiter))
+        if end < 0:
+            end = len(haystack)
+        hs = haystack
+        element = hs[start:end].strip() if strip else hs[start:end]
+        if get_str_i_tuple:
+            elements.append((element, start, end))
         else:
-            echo2(min_indent+"END explode_unquoted due to {} not found"
-                  "".format(delimiter))
+            elements.append(element)
+        start = end + 1  # +1 to skip the delimiter
+        '''
+        if start + len(elements[-1]) >= len(haystack):
             break
+        '''
+    echo2(min_indent+"END explode_unquoted after '{}' element at {}"
+          " due to '{}' not found"
+          "".format(haystack[start:start+1], start, delimiter))
 
+    '''
     element = haystack[start:].strip() if strip else haystack[start:]
     if allow_commented or (not element.startswith("#")):
         if get_str_i_tuple:
             elements.append((element, start, len(haystack)))
         else:
             elements.append(element)
+    '''
     # ^ The rest of haystack is the param after
     #   last comma, else beginning if no comma
     #   (There is always at least 1 entry, the last entry).
@@ -1615,11 +1635,12 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
         if index - 1 >= 0:
             left_char = haystack[index-1:index]
         echo2(min_indent+"{"
-              "index:" + str(index) + ";"
-              "this_char:" + str(this_char) + ";"
-              "in_quote:" + str(in_quote) + ";"
-              "opener_stack:" + str(opener_stack) + ";"
-              "here_c_del:" + str(here_c_del) + ";"
+              "start:" + str(start) + "; "
+              "index:" + str(index) + "; "
+              "this_char:" + str(this_char) + "; "
+              "in_quote:" + str(in_quote if in_quote is not None else "") + "; "
+              "opener_stack:" + str(opener_stack) + "; "
+              "here_c_del:" + str(here_c_del if here_c_del is not None else "") + "; "
               "}")
         if in_quote is None:
             needle_i = -1
@@ -1637,7 +1658,7 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
                          or (haystack[index:index+3] == '"""')
                          or (haystack[index:index+3] == "'''"))):
                 # TODO: handle multi-line comments?
-                echo2(min_indent+"END find_in_code with {} due to comment"
+                echo2(min_indent+"END find_in_code with '{}' due to comment"
                       "".format(result))
                 break
             elif this_char in quote_marks:
@@ -1665,8 +1686,8 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
                 result = index
                 break
         else:
-            if (allow_escaping_quotes and (this_char == in_quote)
-                    and (left_char != "\\")):
+            if ((this_char == in_quote)
+                    and ((left_char != "\\") or (not allow_escaping_quotes))):
                 in_quote = None
             elif haystack[index:index+len(needle)] == needle:
                 if allow_quoted:
@@ -1734,7 +1755,6 @@ def find_unquoted_not_commented(haystack, needle, start=0, endbefore=None,
 
 def find_unquoted_even_commented(haystack, needle, start=0,
                                  endbefore=None, step=1,
-                                 comment_delimiters=["#"],
                                  quote_marks=["'", '"'],
                                  min_indent="",
                                  allow_escaping_quotes=True):
@@ -1751,7 +1771,7 @@ def find_unquoted_even_commented(haystack, needle, start=0,
         start=start,
         endbefore=endbefore,
         step=step,
-        comment_delimiters=comment_delimiters,
+        comment_delimiters=None,  # ignored since allow_commented=True
         allow_quoted=False,
         allow_commented=True,
         quote_marks=quote_marks,

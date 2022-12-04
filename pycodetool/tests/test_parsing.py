@@ -32,6 +32,7 @@ from pycodetool.parsing import (
     explode_unquoted,
     find_unquoted_not_commented_not_parenthetical,
     find_unquoted_even_commented,
+    find_unquoted_not_commented,
     assertEqual,  # This is a special one with custom output.
     AbstractFn,
     slice_is_space,
@@ -407,6 +408,12 @@ class TestParsing(unittest.TestCase):
         self.assertEqual(tag_i, 17)  # 17 for 2nd b, not quoted one
         self.assertEqual(sample[tag_i-1:tag_i+2], "#b>")
 
+    def test_find_unquoted_not_commented(self):
+        sample = '<a href="#b" #a #b>'
+        tag_i = find_unquoted_not_commented(sample, "b")
+        self.assertEqual(tag_i, -1)  # 1st b is quoted, next is comment
+
+
     def test_explode_unquoted__ignore_quoted_delimiters(self):
         '''
         test_explode_unquoted__ methods test parsing assignment
@@ -414,7 +421,6 @@ class TestParsing(unittest.TestCase):
         - allow_escaping_quotes=False since in HTML, "&quot;" is the
           correct way to escape quotes.
         '''
-        set_verbosity(2)
 
         sample = 'a href="b c" d e'
         # echo0()
@@ -430,6 +436,7 @@ class TestParsing(unittest.TestCase):
 
     def test_explode_unquoted__do_not_allow_commented(self):
         sample = 'a href="#b c" #d #e'
+        set_verbosity(2)
         # echo0()
         # echo0("1. Do not allow commented:")
         '''
@@ -448,6 +455,7 @@ class TestParsing(unittest.TestCase):
 
     def test_explode_unquoted__allow_commented(self):
         sample = 'a href="#b c" #d #e'
+
         # echo0()
         # echo0("2. Allow commented:")
         parts = explode_unquoted(sample, " ", allow_commented=True,
@@ -476,7 +484,13 @@ class TestParsing(unittest.TestCase):
 
 if __name__ == "__main__":
     testcase = TestParsing()
+    # testcase.test_find_unquoted_even_commented()
+    # testcase.test_find_unquoted_not_commented()
+    # sys.exit(1)  # debug only
+
     for name in dir(testcase):
         if name.startswith("test"):
+            echo0()
+            echo0("Running {}...".format(name))
             fn = getattr(testcase, name)
             fn()  # Look at def test_* for the code if tracebacks start here
