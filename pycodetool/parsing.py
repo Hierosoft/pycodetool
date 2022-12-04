@@ -80,6 +80,7 @@ DEFAULT_CO = "UTF-8"
 #   - To find the word Prusa in there if corrupt, look up "the official Pr"
 DEFAULT_DEC = "UTF-8"
 
+
 class AbstractFn:
     '''
     Properties
@@ -1560,76 +1561,75 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
     # prev_char = None  # in case step doesn't matter
     left_char = None  # in case step is negative
     # ^ also used in find_unquoted_even_commented
-    if ((haystack is not None) and (needle is not None) and (len(needle) > 0)):
-        in_quote = None
-        opener_stack = []
-        index = start
-        if step < 0:
-            index = endbefore - 1
-        echo2("    find_in_code in "
-              + haystack.strip() + ":")
-        while ((step > 0 and index <= (endbefore-len(needle)))
-                or (step < 0 and (index >= start))):
-            this_char = haystack[index:index+1]
-            here_c_del = None
-            for c_del in comment_delimiters:
-                if haystack[index:index+len(c_del)] == c_del:
-                    here_c_del = c_del
-                    break
-            left_char = None
-            if index - 1 >= 0:
-                left_char = haystack[index-1:index]
-            echo2("      {"
-                  "index:" + str(index) + ";"
-                  "this_char:" + str(this_char) + ";"
-                  "in_quote:" + str(in_quote) + ";"
-                  "opener_stack:" + str(opener_stack) + ";"
-                  "}")
-            if in_quote is None:
-                needle_i = -1
-                if enclosures is not None:
-                    needle_i = find_which_needle(haystack, index,
-                                                 needles=enclosures,
-                                                 subscript=0)
-                is_closing = False
-                if len(opener_stack) > 0:
-                    closer = closers[opener_stack[-1]]
-                    if haystack[index:index+len(closer)] == closer:
-                        is_closing = True
-                if ((not allow_commented)
-                        and ((here_c_del is not None)
-                             or (haystack[index:index+3] == '"""')
-                             or (haystack[index:index+3] == "'''"))):
-                    # TODO: handle multi-line comments?
-                    break
-                elif this_char in quote_marks:
-                    # ^ Don't check for escape characters when not
-                    #   in quotes yet!
-                    in_quote = this_char
-                elif len(opener_stack) > 0:
-                    if is_closing:
-                        opener_stack = opener_stack[:-1]
-                    elif needle_i > -1:
-                        # start a nested parenthetical
-                        opener_stack.append(this_char)
+    in_quote = None
+    opener_stack = []
+    index = start
+    if step < 0:
+        index = endbefore - 1
+    echo2("    find_in_code in "
+          + haystack.strip() + ":")
+    while ((step > 0 and index <= (endbefore-len(needle)))
+            or (step < 0 and (index >= start))):
+        this_char = haystack[index:index+1]
+        here_c_del = None
+        for c_del in comment_delimiters:
+            if haystack[index:index+len(c_del)] == c_del:
+                here_c_del = c_del
+                break
+        left_char = None
+        if index - 1 >= 0:
+            left_char = haystack[index-1:index]
+        echo2("      {"
+              "index:" + str(index) + ";"
+              "this_char:" + str(this_char) + ";"
+              "in_quote:" + str(in_quote) + ";"
+              "opener_stack:" + str(opener_stack) + ";"
+              "}")
+        if in_quote is None:
+            needle_i = -1
+            if enclosures is not None:
+                needle_i = find_which_needle(haystack, index,
+                                             needles=enclosures,
+                                             subscript=0)
+            is_closing = False
+            if len(opener_stack) > 0:
+                closer = closers[opener_stack[-1]]
+                if haystack[index:index+len(closer)] == closer:
+                    is_closing = True
+            if ((not allow_commented)
+                    and ((here_c_del is not None)
+                         or (haystack[index:index+3] == '"""')
+                         or (haystack[index:index+3] == "'''"))):
+                # TODO: handle multi-line comments?
+                break
+            elif this_char in quote_marks:
+                # ^ Don't check for escape characters when not
+                #   in quotes yet!
+                in_quote = this_char
+            elif len(opener_stack) > 0:
+                if is_closing:
+                    opener_stack = opener_stack[:-1]
                 elif needle_i > -1:
-                    # start a non-nested parenthetical
+                    # start a nested parenthetical
                     opener_stack.append(this_char)
-                elif haystack[index:index+len(needle)] == needle:
-                    # ^ This should only happen when
-                    #   len(opener_stack) == 0 (it is, since > 0 was
-                    #   handled in a prior case.
+            elif needle_i > -1:
+                # start a non-nested parenthetical
+                opener_stack.append(this_char)
+            elif haystack[index:index+len(needle)] == needle:
+                # ^ This should only happen when
+                #   len(opener_stack) == 0 (it is, since > 0 was
+                #   handled in a prior case.
+                result = index
+                break
+        else:
+            if (this_char == in_quote) and (left_char != "\\"):
+                in_quote = None
+            elif haystack[index:index+len(needle)] == needle:
+                if allow_quoted:
                     result = index
                     break
-            else:
-                if (this_char == in_quote) and (left_char != "\\"):
-                    in_quote = None
-                elif haystack[index:index+len(needle)] == needle:
-                    if allow_quoted:
-                        result = index
-                        break
-            # prev_char = this_char
-            index += step
+        # prev_char = this_char
+        index += step
     return result
 
 
