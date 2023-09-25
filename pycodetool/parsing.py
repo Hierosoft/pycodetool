@@ -31,7 +31,7 @@ import codecs
 from .find_hierosoft import hierosoft
 # ^ also works for submodules since changes sys.path
 
-from hierosoft.logging import (
+from hierosoft import (
     echo0,
     echo1,
     echo2,

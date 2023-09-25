@@ -20,6 +20,10 @@ if platform.system() == "Windows":
 else:
     HOME = os.environ['HOME']
 
+MODULE_DIR = os.path.dirname(os.path.realpath(__file__))
+REPO_DIR = os.path.dirname(MODULE_DIR)
+if __name__ == "__main__":
+    sys.path.insert(0, REPO_DIR)
 
 bash_to_python_header = """#!/usr/bin/env python3
 import sys
@@ -34,7 +38,7 @@ else:
 """
 
 def echo0(*args, **kwargs):
-    print(*args, **kwargs, file=sys.stderr)
+    print(*args, file=sys.stderr, **kwargs)
 
 def usage():
     echo0(__doc__)
@@ -213,7 +217,10 @@ def main():
         print("Error: %s does not exist." % pformat(path), file=sys.stderr)
         return 1
     unbash = BashToPyTranslator()
+    nameNoExt, dotExt = os.path.splitext(path)
+    dstPath = nameNoExt + ".py"
     unbash.translate(path)
+    echo0("")
     return 0
 
 if __name__ == "__main__":
