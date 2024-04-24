@@ -35,6 +35,8 @@ from hierosoft import (
     echo0,
     echo1,
     echo2,
+    echo3,
+    echo4,
     get_verbosity,
 )
 
@@ -292,7 +294,7 @@ class ConfigManager:
         """
         is_changed = False
         if name not in self._data:
-            echo2("")
+            echo4("")
             if default_value is None:
                 echo0("WARNING: this program does not have a"
                       + " default value for "+name+".")
@@ -1184,7 +1186,7 @@ def explode_unquoted(haystack, delimiter, get_str_i_tuple=False,
             haystack = haystack[:comment_i]
     elements = list()
     start = 0
-    echo2(min_indent+"explode_unquoted:")
+    echo4(min_indent+"explode_unquoted:")
     while start < len(haystack):
         if allow_commented:
             end = find_unquoted_even_commented(
@@ -1204,9 +1206,9 @@ def explode_unquoted(haystack, delimiter, get_str_i_tuple=False,
                 min_indent=min_indent+"  ",
                 allow_escaping_quotes=allow_escaping_quotes,
             )
-        echo2(min_indent+'- haystack[{}:]="{}"'
+        echo4(min_indent+'- haystack[{}:]="{}"'
               ''.format(start, haystack[start:]))
-        echo2(min_indent+'- end={} ender="{}"'
+        echo4(min_indent+'- end={} ender="{}"'
               ''.format(end, delimiter))
         if end < 0:
             end = len(haystack)
@@ -1221,7 +1223,7 @@ def explode_unquoted(haystack, delimiter, get_str_i_tuple=False,
         if start + len(elements[-1]) >= len(haystack):
             break
         '''
-    echo2(min_indent+"END explode_unquoted after '{}' element at {}"
+    echo4(min_indent+"END explode_unquoted after '{}' element at {}"
           " due to '{}' not found"
           "".format(haystack[start:start+1], start, delimiter))
 
@@ -1456,11 +1458,11 @@ def quoted_slices(haystack, start=0, endbefore=None,
     open_i = None
     prev_c = None
     comment_started = False
-    echo2("comment_delimiters={}".format(comment_delimiters))
+    echo4("comment_delimiters={}".format(comment_delimiters))
     while i+1 < endbefore:
         i += 1
         c = haystack[i]
-        echo2("( i={}, open_i={}, c={} )".format(i, open_i, c))
+        echo4("( i={}, open_i={}, c={} )".format(i, open_i, c))
         if open_i is None:
             if c in quotes:
                 open_i = i
@@ -1621,7 +1623,7 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
     index = start
     if step < 0:
         index = endbefore - 1
-    echo2("{}find_in_code(`{}`, '{}':"
+    echo4("{}find_in_code(`{}`, '{}':"
           "".format(min_indent, haystack.strip(), needle))
     while ((step > 0 and index <= (endbefore-len(needle)))
             or (step < 0 and (index >= start))):
@@ -1634,7 +1636,7 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
         left_char = None
         if index - 1 >= 0:
             left_char = haystack[index-1:index]
-        echo2(min_indent+"{"
+        echo4(min_indent+"{"
               "start:" + str(start) + "; "
               "index:" + str(index) + "; "
               "this_char:" + str(this_char) + "; "
@@ -1658,7 +1660,7 @@ def find_in_code(haystack, needle, start=0, endbefore=None,
                          or (haystack[index:index+3] == '"""')
                          or (haystack[index:index+3] == "'''"))):
                 # TODO: handle multi-line comments?
-                echo2(min_indent+"END find_in_code with '{}' due to comment"
+                echo4(min_indent+"END find_in_code with '{}' due to comment"
                       "".format(result))
                 break
             elif this_char in quote_marks:
