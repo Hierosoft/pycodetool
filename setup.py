@@ -7,15 +7,9 @@ versionedModule['urllib'] = 'urllib'
 if sys.version_info.major < 3:
     versionedModule['urllib'] = 'urllib2'
 
-install_requires = []
-
-if os.path.isfile("requirements.txt"):
-    with open("requirements.txt", "r") as ins:
-        for rawL in ins:
-            line = rawL.strip()
-            if len(line) < 1:
-                continue
-            install_requires.append(line)
+install_requires = [
+    "hierosoft @ git+https://github.com/Hierosoft/hierosoft.git"
+]
 
 description = (
     "Parse and modify Python code."
