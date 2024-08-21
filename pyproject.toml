@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["pycodetool"]
+
+[project]
+name = "pycodetool"
+version = "0.9.0"
+description = "Parse and modify Python code."
+readme = {file = "readme.md", content-type = "text/markdown"}
+keywords = ["python", "code", "parsing", "development", "parser", "IronPython"]
+requires-python = ">=3.0"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Software Development :: Code Generators",
+]
+dependencies = [
+    "hierosoft @ git+https://github.com/Hierosoft/hierosoft.git"
+]
+
+authors = [
+  {name = "Jake Gustafson", email = "7557867+poikilos@users.noreply.github.com"},
+]
+
+[project.optional-dependencies]
+dev = ["nose", "nose-cover3"]
+
+[project.urls]
+"Homepage" = "https://github.com/Hierosoft/pycodetool"
+
+
+[project.scripts]
+changes = "pycodetool.changes:main"
