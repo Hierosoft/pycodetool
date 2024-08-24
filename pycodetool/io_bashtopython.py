@@ -12,7 +12,6 @@ import sys
 import os
 import re  # regex
 import platform
-from pprint import pformat
 import bashlex
 
 if platform.system() == "Windows":
@@ -214,7 +213,7 @@ def main():
     path = sys.argv[1]
     if not os.path.isfile(path):
         usage()
-        print("Error: %s does not exist." % pformat(path), file=sys.stderr)
+        print("Error: %s does not exist." % repr(path), file=sys.stderr)
         return 1
     unbash = BashToPyTranslator()
     nameNoExt, dotExt = os.path.splitext(path)
