@@ -20,7 +20,9 @@ classifiers = [
     "Topic :: Software Development :: Code Generators",
 ]
 dependencies = [
-    "hierosoft @ git+https://github.com/Hierosoft/hierosoft.git"
+    "hierosoft @ git+https://github.com/Hierosoft/hierosoft"
+    # ^ leave out .git to match other projects requiring it
+    #   (prevents setuptools from having an unecessary conflict error)
 ]
 
 authors = [

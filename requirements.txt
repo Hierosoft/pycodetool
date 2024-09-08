@@ -1,1 +1,1 @@
-hierosoft @ git+https://github.com/Hierosoft/hierosoft.git
+hierosoft @ git+https://github.com/Hierosoft/hierosoft
