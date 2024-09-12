@@ -27,6 +27,7 @@ import traceback
 import copy
 # import chardet  # not built-in
 import codecs
+import re
 
 from .find_hierosoft import hierosoft
 # ^ also works for submodules since changes sys.path
@@ -949,29 +950,35 @@ def is_identifier_valid(val, is_dot_allowed):
 
 
 def find_slice(haystack, starter, ender):
-    '''
-    Find a pair of strings and get the slice to get or remove the string
-    (index of starter, and index of ender + 1) or return -1, -1. The
-    starter and ender can be the same character, and it must occur
-    twice to count. Otherwise, ender must occur after starter to count.
-    - If looking for multiple enclosures at once, use another function
-      such as get_operation_chunk_len instead.
-    - To get multiple slices, use another function such as
-      explode_unquoted or quoted_slices instead.
+    '''Find slice indices between two strings.
+    Get a slice that can be used to get or remove the substring (index
+    of starter, and index of ender + 1) or return tuple(-1, -1). The starter
+    and ender can be the same character, but then it must occur twice to
+    count. Otherwise, ender must occur after starter to count.
+
+    Note:
+        - Use another function like `get_operation_chunk_len` for
+          multiple enclosures.
+        - Use functions like `explode_unquoted` or `quoted_slices` to
+          get multiple slices.
 
     Args:
         haystack (str): The string to slice.
         starter (str): The first needle such as "(".
         ender (str): The second needle such as ")".
+    returns:
+        tuple(int): Two ints, or if not found, tuple(-1, -1)
     '''
     # See also a copy in linux-preinstall
-    startI = haystack.find(starter)
-    if startI < 0:
+    pattern = re.escape(starter) + r'(.*?)' + re.escape(ender)
+    match = re.search(pattern, haystack)
+
+    if not match:
         return -1, -1
-    endI = haystack.find(ender, startI + 1)
-    if endI < 0:
-        return -1, -1
-    return startI, endI+1
+
+    start_index = match.start()
+    end_index = match.end()
+    return start_index, end_index
 
 
 # formerly get_params_len
