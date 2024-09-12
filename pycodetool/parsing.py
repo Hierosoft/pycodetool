@@ -959,11 +959,12 @@ def find_slice(haystack, starter, ender):
     - To get multiple slices, use another function such as
       explode_unquoted or quoted_slices instead.
 
-    Sequential arguments:
-    haystack -- The string to slice.
-    starter -- The first needle such as "(".
-    ender -- The second needle such as ")".
+    Args:
+        haystack (str): The string to slice.
+        starter (str): The first needle such as "(".
+        ender (str): The second needle such as ")".
     '''
+    # See also a copy in linux-preinstall
     startI = haystack.find(starter)
     if startI < 0:
         return -1, -1
